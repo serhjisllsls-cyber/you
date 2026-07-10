@@ -1,104 +1,414 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>YouTube Вместе</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <style>
-        body { margin:0; padding:0; background:#0a0a0a; color:#fff; font-family:Arial; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
-        #header { padding:12px; background:#111; text-align:center; }
-        #player { flex:1; background:#000; }
-        iframe { width:100%; height:100%; border:none; }
-        #chat { height:260px; overflow-y:auto; padding:12px; background:#111; }
-        .message { margin:8px 0; padding:10px 14px; border-radius:12px; max-width:85%; }
-        .me { background:#3f51b5; margin-left:auto; }
-        .other { background:#1f1f1f; }
-        #controls { padding:12px; background:#111; }
-        input, button { padding:12px; margin:5px 0; border-radius:8px; width:100%; font-size:16px; }
-        button { background:#ff0000; color:white; font-weight:bold; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+  <title>YouTube Вместе</title>
+
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <style>
+    body { margin:0; padding:0; background:#0a0a0a; color:#fff; font-family:Arial,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+    #header { padding:12px; background:#111; text-align:center; font-size:17px; }
+    #player { flex:1; background:#000; display:flex; align-items:stretch; }
+    #youtube { width:100%; height:100%; border:none; }
+    #chat { height:280px; overflow-y:auto; padding:12px; background:#111; display:flex; flex-direction:column; gap:8px; }
+    .message { max-width:85%; padding:11px 14px; border-radius:14px; font-size:15.5px; word-break:break-word; }
+    .me { align-self: flex-end; background: #3f51b5; border-bottom-right-radius: 6px; }
+    .other { align-self: flex-start; background: #1f1f1f; border-bottom-left-radius: 6px; }
+    #controls { padding: 14px 16px; background: #111; border-top: 1px solid #333; }
+    input[type="text"] { background: #222; border: none; color: white; padding: 11px; border-radius: 10px; font-size: 15px; }
+    button { background: #ff0000; color: white; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 600; font-size: 15px; margin: 4px 0; cursor:pointer; }
+    .host-only { background: #1a1a1a; padding: 10px; border-radius: 10px; margin: 8px 0; }
+    .small { font-size:13px; color:#bbb; margin-left:8px; }
+  </style>
 </head>
 <body>
-    <div id="header">YouTube Вместе — Комната: <b id="room"></b> <span id="role"></span></div>
-    <div id="player"><iframe id="youtube" allowfullscreen allow="autoplay"></iframe></div>
-    <div id="chat"></div>
-    <div id="controls">
-        <div id="hostControls">
-            <input type="text" id="url" placeholder="Вставьте ссылку YouTube">
-            <button onclick="loadVideo()">Запустить видео у всех</button>
-        </div>
+  <div id="header">YouTube Вместе — Комната: <b id="room"></b> <span id="role" style="font-size:14px;"></span></div>
 
-        <div style="display:flex; gap:8px; margin-top:8px;">
-            <input type="text" id="name" value="Я" style="width:120px;">
-            <input type="text" id="msg" placeholder="Сообщение" style="flex:1;" onkeypress="if(event.key==='Enter') sendMsg()">
-            <button onclick="sendMsg()">→</button>
-        </div>
+  <div id="player">
+    <!-- IFrame API создаёт iframe внутри этого контейнера -->
+    <div id="youtube-container" style="width:100%;height:100%;"></div>
+  </div>
+
+  <div id="chat"></div>
+
+  <div id="controls">
+    <!-- Видно только ведущему -->
+    <div id="hostControls" class="host-only">
+      <input type="text" id="url" placeholder="Вставьте ссылку YouTube или ID" style="width:65%;" />
+      <button id="btnLoad">Загрузить видео</button>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button id="btnPlay" style="flex:1; background:#4caf50;">▶ Запустить у всех</button>
+        <button id="btnPause" style="flex:1; background:#f44336;">⏸ Остановить у всех</button>
+      </div>
+      <div class="small">Советы: поддерживаются ссылки вида youtube.com/watch?v=ID, youtu.be/ID и просто ID.</div>
     </div>
 
-    <script>
-        const firebaseConfig = {
-          apiKey: "AIzaSyDUxyJ1SP5BojDMBkRBgKXFtkE8zSxHcJY",
-          authDomain: "together-313cc.firebaseapp.com",
-          projectId: "together-313cc",
-          storageBucket: "together-313cc.firebasestorage.app",
-          messagingSenderId: "547247117130",
-          appId: "1:547247117130:web:acb59e4e760a71bf4167b3"
-        };
+    <!-- Чат для всех -->
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <input type="text" id="name" value="Я" style="width:120px;" />
+      <input type="text" id="msg" placeholder="Сообщение..." style="flex:1;" onkeypress="if(event.key==='Enter') sendMsg()" />
+      <button onclick="sendMsg()" style="width:auto; padding:0 20px;">→</button>
+    </div>
+  </div>
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+  <script>
+    // ====== Конфигурация Firebase (не трогать, если используете свой проект) ======
+    const firebaseConfig = {
+      apiKey: "AIzaSyDUxyJ1SP5BojDMBkRBgKXFtkE8zSxHcJY",
+      authDomain: "together-313cc.firebaseapp.com",
+      projectId: "together-313cc",
+      storageBucket: "together-313cc.firebasestorage.app",
+      messagingSenderId: "547247117130",
+      appId: "1:547247117130:web:acb59e4e760a71bf4167b3"
+      // (опционально можно добавить databaseURL)
+    };
 
-        const roomId = prompt("ID комнаты:") || "room" + Math.floor(Math.random()*100000);
-        document.getElementById("room").textContent = roomId;
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-        const isHost = confirm("Вы ведущий?");
-        document.getElementById("role").textContent = isHost ? "(Ведущий)" : "(Зритель)";
+    // Уникальный id клиента, используется чтобы не выполнять собственные команды повторно
+    const clientId = 'c_' + Math.random().toString(36).slice(2, 11);
 
-        if (!isHost) document.getElementById("hostControls").style.display = "none";
+    // Комната и роль
+    const roomId = prompt("Введите ID комнаты:") || "room" + Math.floor(Math.random()*100000);
+    document.getElementById("room").textContent = roomId;
 
-        const roomRef = db.ref('rooms/' + roomId);
+    const isHost = confirm("Вы ведущий? (будете управлять видео)");
+    document.getElementById("role").textContent = isHost ? "(Ведущий)" : "(Зритель)";
 
-        function loadVideo() {
-            const url = document.getElementById("url").value.trim();
-            const videoId = url.match(/(?:v=|youtu\.be\/)([^&?]+)/)?.[1];
-            if (videoId) {
-                roomRef.update({ videoId: videoId, updated: Date.now() });
+    if (!isHost) {
+      document.getElementById("hostControls").style.display = "none";
+    }
+
+    const roomRef = db.ref('rooms/' + roomId);
+
+    // ====== Вспомогательные функции ======
+    function escapeHtml(str){
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function addMessage(name, text, mine){
+      const chat = document.getElementById("chat");
+      const div = document.createElement("div");
+      div.className = 'message ' + (mine ? 'me' : 'other');
+      div.innerHTML = `<strong>${escapeHtml(name)}:</strong> ${escapeHtml(text)}`;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // ====== Chat ======
+    function sendMsg(){
+      const name = document.getElementById("name").value.trim() || "Пользователь";
+      const text = document.getElementById("msg").value.trim();
+      if (!text) return;
+      const payload = { name, text, time: Date.now(), by: clientId };
+      roomRef.child('messages').push(payload);
+      document.getElementById("msg").value = "";
+    }
+
+    // Отображаем входящие сообщения
+    roomRef.child('messages').on('child_added', (snap) => {
+      const msg = snap.val();
+      if (!msg) return;
+      const mine = msg.by === clientId;
+      addMessage(msg.name || 'Пользователь', msg.text || '', mine);
+    });
+
+    // ====== Парсер ссылок YouTube ======
+    function parseYouTubeId(input){
+      if (!input) return null;
+      input = input.trim();
+      // Если уже похоже на ID (11 символов)
+      const idOnly = input.match(/^[a-zA-Z0-9_-]{11}$/);
+      if (idOnly) return idOnly[0];
+      // try common patterns
+      const patterns = [
+        /(?:v=|\/v\/|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com.*(?:\/shorts\/)([a-zA-Z0-9_-]{11})/
+      ];
+      for (const r of patterns) {
+        const m = input.match(r);
+        if (m && m[1]) return m[1];
+      }
+      // fallback: find 11-char token
+      const fallback = input.match(/([a-zA-Z0-9_-]{11})/);
+      return fallback ? fallback[1] : null;
+    }
+
+    // ====== YouTube IFrame API setup ======
+    let player = null;
+    let playerReady = false;
+    let pendingLoad = null; // если API ещё не готов
+
+    // Загружаем API
+    (function loadYT(){
+      const tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+    })();
+
+    function onYouTubeIframeAPIReady(){
+      // создаём плеер в контейнере
+      player = new YT.Player('youtube-container', {
+        width: '100%',
+        height: '100%',
+        videoId: '', // пусто до получения данных
+        playerVars: {
+          rel: 0,
+          playsinline: 1,
+          controls: 1,
+          modestbranding: 1
+        },
+        events: {
+          onReady: (e) => {
+            playerReady = true;
+            if (pendingLoad) {
+              applyVideoLoad(pendingLoad.videoId, pendingLoad.start);
+              pendingLoad = null;
             }
+            // если ведущий — стартуем периодический апдейт позиции
+            if (isHost) startHostPositionSync();
+          },
+          onStateChange: onPlayerStateChange
+        }
+      });
+    }
+    // expose globally for YT API
+    window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+
+    // ====== Управление состоянием комнаты в БД ======
+    // Структура:
+    // rooms/{roomId}/state = { videoId, playing (bool), position (seconds), ts, lastBy }
+    // rooms/{roomId}/commands (push) for chat we use messages
+
+    // Apply load command: load video and optionally seek to start
+    function applyVideoLoad(videoId, startSeconds = 0, by){
+      if (!playerReady) {
+        pendingLoad = { videoId, start: startSeconds };
+        return;
+      }
+      try {
+        player.loadVideoById({ videoId, startSeconds: Math.max(0, startSeconds) });
+      } catch (e) {
+        // fallback: cue if load fails (some browsers restrict autoplay)
+        player.cueVideoById({ videoId, startSeconds: Math.max(0, startSeconds) });
+      }
+    }
+
+    function applyPlay(by, position){
+      if (!playerReady) return;
+      // seek if large difference
+      if (typeof position === 'number') {
+        const cur = player.getCurrentTime();
+        if (Math.abs(cur - position) > 1.0) {
+          player.seekTo(position, true);
+        }
+      }
+      player.playVideo();
+    }
+
+    function applyPause(by, position){
+      if (!playerReady) return;
+      if (typeof position === 'number') {
+        const cur = player.getCurrentTime();
+        if (Math.abs(cur - position) > 1.0) {
+          player.seekTo(position, true);
+        }
+      }
+      player.pauseVideo();
+    }
+
+    // Обработка событий плеера (локальный ведущий может отправлять команды)
+    let lastLocalState = { playing: false, time: 0 };
+    function onPlayerStateChange(event){
+      // только ведущий отправляет автоматом новые команды (чтобы синхронизовать)
+      if (!isHost) return;
+
+      const state = event.data;
+      const now = Date.now();
+      const time = player && player.getCurrentTime ? player.getCurrentTime() : 0;
+
+      if (state === YT.PlayerState.PLAYING) {
+        // обновляем состояние комнаты
+        roomRef.child('state').set({
+          videoId: currentVideoId || null,
+          playing: true,
+          position: time,
+          ts: now,
+          lastBy: clientId
+        }).catch(console.error);
+      } else if (state === YT.PlayerState.PAUSED) {
+        roomRef.child('state').set({
+          videoId: currentVideoId || null,
+          playing: false,
+          position: time,
+          ts: now,
+          lastBy: clientId
+        }).catch(console.error);
+      }
+      // buffering/ended ignored here
+    }
+
+    // ====== Обработка изменений в БД (все клиенты) ======
+    let currentVideoId = null;
+    let applyingRemote = false;
+
+    roomRef.child('state').on('value', (snap) => {
+      const s = snap.val();
+      if (!s) return;
+      // Игнорируем собственные события (по clientId)
+      if (s.lastBy === clientId) return;
+
+      // Если приедет другой videoId — загружаем
+      if (s.videoId && s.videoId !== currentVideoId) {
+        currentVideoId = s.videoId;
+        // Если ведущий указал позицию, используем её
+        applyVideoLoad(s.videoId, s.position || 0, s.lastBy);
+        // Если флаг playing === true -> play, иначе pause (после загрузки)
+        setTimeout(() => {
+          if (!playerReady) return;
+          try {
+            if (s.playing) {
+              applyPlay(s.lastBy, s.position);
+            } else {
+              applyPause(s.lastBy, s.position);
+            }
+          } catch (e) { console.error(e); }
+        }, 500);
+        return;
+      }
+
+      // Если те же videoId — синхронизируем play/pause/seek
+      if (s.videoId === currentVideoId) {
+        // Если большая рассинхронизация — seek и установить состояние
+        if (!playerReady) return;
+        const localPos = player.getCurrentTime ? player.getCurrentTime() : 0;
+        const remotePos = typeof s.position === 'number' ? s.position : localPos;
+        const diff = Math.abs(localPos - remotePos);
+
+        if (diff > 1.0) {
+          // seek
+          player.seekTo(remotePos, true);
         }
 
-        function sendMsg() {
-            const name = document.getElementById("name").value || "Я";
-            const text = document.getElementById("msg").value.trim();
-            if (text) {
-                roomRef.child('messages').push({ name, text, time: Date.now() });
-                document.getElementById("msg").value = "";
-            }
+        if (s.playing) {
+          // сервер говорит play
+          if (player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
+        } else {
+          if (player.getPlayerState() === YT.PlayerState.PLAYING) player.pauseVideo();
         }
+      }
+    });
 
-        // Синхронизация видео
-        roomRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data && data.videoId) {
-                const iframe = document.getElementById("youtube");
-                const desiredSrc = `https://www.youtube.com/embed/${data.videoId}?autoplay=1&rel=0&playsinline=1`;
-                if (iframe.src !== desiredSrc) {
-                    iframe.src = desiredSrc;
-                }
-            }
-        });
+    // ====== Кнопки ведущего ======
+    document.getElementById('btnLoad').addEventListener('click', () => {
+      const input = document.getElementById('url').value;
+      const vid = parseYouTubeId(input);
+      if (!vid) {
+        alert('Не удалось распознать ID видео. Вставьте ссылку или сам ID (11 символов).');
+        return;
+      }
+      currentVideoId = vid;
+      const now = Date.now();
+      // Ведущий сразу загрузит и установит state — остальные подслушают
+      roomRef.child('state').set({
+        videoId: vid,
+        playing: false,
+        position: 0,
+        ts: now,
+        lastBy: clientId
+      }).catch(console.error);
+      // локально загрузим (если API уже готов)
+      applyVideoLoad(vid, 0, clientId);
+    });
 
-        // Сообщения
-        roomRef.child('messages').on('child_added', (snapshot) => {
-            const msg = snapshot.val();
-            const chat = document.getElementById("chat");
-            const div = document.createElement("div");
-            div.className = "message";
-            div.innerHTML = `<strong>${msg.name}:</strong> ${msg.text}`;
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
-        });
-    </script>
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (!currentVideoId) {
+        alert('Сначала загрузите видео.');
+        return;
+      }
+      const pos = playerReady && player.getCurrentTime ? player.getCurrentTime() : 0;
+      roomRef.child('state').set({
+        videoId: currentVideoId,
+        playing: true,
+        position: pos,
+        ts: Date.now(),
+        lastBy: clientId
+      }).catch(console.error);
+      // локально запустим (быстрее отклика)
+      if (playerReady) player.playVideo();
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      if (!currentVideoId) return;
+      const pos = playerReady && player.getCurrentTime ? player.getCurrentTime() : 0;
+      roomRef.child('state').set({
+        videoId: currentVideoId,
+        playing: false,
+        position: pos,
+        ts: Date.now(),
+        lastBy: clientId
+      }).catch(console.error);
+      if (playerReady) player.pauseVideo();
+    });
+
+    // ====== Периодический апдейт позиции от ведущего (чтобы зрители подтягивались) ======
+    let hostSyncInterval = null;
+    function startHostPositionSync(){
+      if (!isHost) return;
+      if (hostSyncInterval) clearInterval(hostSyncInterval);
+      hostSyncInterval = setInterval(() => {
+        if (!playerReady || !currentVideoId) return;
+        const pos = player.getCurrentTime ? player.getCurrentTime() : 0;
+        const playing = player.getPlayerState ? (player.getPlayerState() === YT.PlayerState.PLAYING) : false;
+        roomRef.child('state').update({
+          position: pos,
+          playing: playing,
+          ts: Date.now(),
+          lastBy: clientId
+        }).catch(console.error);
+      }, 3000); // каждые 3 секунды
+    }
+
+    // Очистка интервала при уходе со страницы
+    window.addEventListener('beforeunload', () => {
+      if (hostSyncInterval) clearInterval(hostSyncInterval);
+    });
+
+    // ====== Начальное сообщение системы ======
+    // Когда соединение установлено, добавляем "системное" сообщение (один раз)
+    (function sayRoomOpened(){
+      const payload = { name: "Система", text: `Комната ${roomId} открыта`, time: Date.now(), by: 'system' };
+      roomRef.child('messages').push(payload).catch(() => {/* ignore */});
+    })();
+
+    // ====== Инициализация: попытаемся прочитать текущее состояние комнаты при подключении ======
+    roomRef.child('state').once('value').then((snap) => {
+      const s = snap.val();
+      if (!s || !s.videoId) return;
+      currentVideoId = s.videoId;
+      // загрузим по состоянию (если есть позиция)
+      const start = s.position || 0;
+      if (playerReady) {
+        applyVideoLoad(currentVideoId, start, s.lastBy);
+        setTimeout(() => {
+          if (s.playing) applyPlay(s.lastBy, start); else applyPause(s.lastBy, start);
+        }, 500);
+      } else {
+        pendingLoad = { videoId: currentVideoId, start };
+      }
+    }).catch(console.error);
+
+  </script>
 </body>
 </html>
