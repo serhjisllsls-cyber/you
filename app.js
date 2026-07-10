@@ -6,18 +6,20 @@ import {
     orderBy,
     onSnapshot,
     where,
-    and,
-    or,
     Timestamp,
-    getDocs,
-    deleteDoc,
-    doc
+    limit
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ========== ПЕРЕМЕННЫЕ ==========
-const ROOM_ID = "private_chat_room"; // Одна комната для двоих
+const ROOM_ID = "private_chat_room";
+const USERS = {
+    D: { password: "111" },
+    S: { password: "222" }
+};
+
 let currentUser = null;
 let unsubscribe = null;
+let selectedNick = "D";
 
 // ========== DOM ЭЛЕМЕНТЫ ==========
 const loginScreen = document.getElementById('loginScreen');
@@ -26,52 +28,72 @@ const loginForm = document.getElementById('loginForm');
 const messageForm = document.getElementById('messageForm');
 const messageInput = document.getElementById('messageInput');
 const messagesContainer = document.getElementById('messagesContainer');
-const chatTitle = document.getElementById('chatTitle');
+const currentNickEl = document.getElementById('currentNick');
 const logoutBtn = document.getElementById('logoutBtn');
 const loginError = document.getElementById('loginError');
-const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+const nickBtns = document.querySelectorAll('.nick-btn');
 
 // ========== СОБЫТИЯ ==========
+nickBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        nickBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedNick = btn.dataset.nick;
+        passwordInput.value = '';
+        passwordInput.focus();
+    });
+});
+
 loginForm.addEventListener('submit', handleLogin);
 messageForm.addEventListener('submit', handleSendMessage);
 logoutBtn.addEventListener('click', handleLogout);
+
+// Предотвращение автозаполнения и зума
+document.addEventListener('touchmove', (e) => {
+    if (e.target === messageInput || e.target === passwordInput) {
+        return;
+    }
+}, { passive: true });
 
 // ========== ВХОД ==========
 async function handleLogin(e) {
     e.preventDefault();
     
-    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
 
     // Валидация
-    if (!username) {
-        showLoginError('Введите ник');
+    if (!password) {
+        showLoginError('Введите пароль');
         return;
     }
 
-    if (username.length < 2) {
-        showLoginError('Ник должен быть минимум 2 символа');
+    if (!USERS[selectedNick]) {
+        showLoginError('Неверный пользователь');
         return;
     }
 
-    if (username.length > 20) {
-        showLoginError('Ник не может быть более 20 символов');
+    if (password !== USERS[selectedNick].password) {
+        showLoginError('Неверный пароль');
         return;
     }
 
     try {
-        // Просто войти с этим ником
-        currentUser = username;
+        currentUser = selectedNick;
 
         // Очистить форму
         loginForm.reset();
         loginError.textContent = '';
+        nickBtns.forEach(b => b.classList.remove('active'));
+        nickBtns[0].classList.add('active');
         
         // Переключить экран
         loginScreen.classList.remove('active');
         chatScreen.classList.add('active');
         
-        // Установить заголовок
-        chatTitle.textContent = 'Приватный чат';
+        // Установить имя пользователя
+        currentNickEl.textContent = currentUser;
         
         // Загрузить сообщения
         loadMessages();
@@ -100,7 +122,8 @@ function loadMessages() {
     const q = query(
         messagesRef,
         where('room', '==', ROOM_ID),
-        orderBy('timestamp', 'asc')
+        orderBy('timestamp', 'asc'),
+        limit(500)
     );
 
     unsubscribe = onSnapshot(q, (snapshot) => {
@@ -122,7 +145,6 @@ function displayMessages(docs) {
         const emptyMessage = document.createElement('div');
         emptyMessage.className = 'empty-state';
         emptyMessage.textContent = 'Начните диалог!';
-        emptyMessage.style.cssText = 'text-align: center; color: #999; padding: 20px; margin: auto;';
         messagesContainer.appendChild(emptyMessage);
         return;
     }
@@ -138,7 +160,7 @@ function createMessageElement(data) {
     const div = document.createElement('div');
     const isOwn = data.from === currentUser;
     
-    div.className = `message ${isOwn ? 'own' : ''}`;
+    div.className = `message ${isOwn ? 'own' : 'other'}`;
     
     const userLabel = document.createElement('div');
     userLabel.className = 'message-user';
@@ -218,11 +240,14 @@ function handleLogout() {
     loginScreen.classList.add('active');
     
     messageInput.value = '';
-    usernameInput.value = '';
-    usernameInput.focus();
+    passwordInput.value = '';
+    selectedNick = "D";
+    nickBtns.forEach(b => b.classList.remove('active'));
+    nickBtns[0].classList.add('active');
+    passwordInput.focus();
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 window.addEventListener('load', () => {
-    usernameInput.focus();
+    passwordInput.focus();
 });
