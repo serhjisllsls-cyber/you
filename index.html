@@ -14,21 +14,15 @@
         <!-- Экран входа -->
         <div id="loginScreen" class="screen active">
             <div class="login-container">
-                <h1>💬 Приватный чат</h1>
+                <h1>💬 Чат</h1>
                 <form id="loginForm">
                     <input 
                         type="text" 
                         id="username" 
-                        placeholder="Ваше имя" 
+                        placeholder="Введите ваш ник" 
                         required
                         autocomplete="off"
-                    >
-                    <input 
-                        type="password" 
-                        id="password" 
-                        placeholder="Пароль" 
-                        required
-                        autocomplete="off"
+                        maxlength="20"
                     >
                     <button type="submit">Войти</button>
                 </form>
@@ -58,7 +52,7 @@
                         placeholder="Сообщение..."
                         autocomplete="off"
                     >
-                    <button type="submit" class="send-btn">Отправить</button>
+                    <button type="submit" class="send-btn">→</button>
                 </form>
             </div>
         </div>
@@ -67,7 +61,6 @@
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
     
     <script src="firebase-config.js"></script>
     <script src="app.js"></script>
