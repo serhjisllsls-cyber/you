@@ -3,13 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
-  <title>YouTube Вместе — PWA</title>
-
-  <!-- iOS PWA support -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="manifest" href="manifest.json" />
+  <title>YouTube Вместе — Минимал</title>
 
   <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -17,135 +11,124 @@
 
   <style>
     :root{
-      --bg:#050506; --panel:#0f0f10; --muted:#1f1f1f; --accent:#ff3b30; --accent2:#007aff; --text:#fff;
-      --touch:56px; --radius:12px;
+      --bg:#000;
+      --panel:#070707;
+      --muted:#1b1b1b;
+      --accent:#ddd;
+      --bubble-left: rgba(255,255,255,0.06);
+      --bubble-right: rgba(255,255,255,0.04);
+      --pill-bg: rgba(255,255,255,0.06);
+      --pill-text: #ddd;
+      --avatar-size:46px;
     }
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%;}
-    .app{display:flex;flex-direction:column;height:100vh;box-sizing:border-box;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
-    header{height:56px;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(180deg,rgba(0,0,0,0.28),transparent);position:relative;z-index:40;}
-    .left{display:flex;align-items:center;gap:10px;}
-    .title{font-weight:700;font-size:16px;}
-    .room{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:10px;font-size:13px;color:#ddd;}
-    .status{font-size:12px;color:#bfbfbf;margin-left:8px;}
 
-    /* player area */
-    #player{flex:1;position:relative;background:#000;display:flex;align-items:stretch;overflow:hidden;}
-    #youtube-container{width:100%;height:100%;}
-    .controls-overlay{position:absolute;left:0;right:0;bottom:0;padding:8px;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;}
-    .controls-inner{display:flex;gap:12px;align-items:center;pointer-events:auto;backdrop-filter:blur(6px);background:linear-gradient(180deg,rgba(0,0,0,0.24),rgba(0,0,0,0.36));padding:8px;border-radius:14px;margin-bottom:8px;}
-    .btn{min-width:48px;min-height:var(--touch);padding:12px 14px;border-radius:10px;border:none;color:var(--text);font-weight:700;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,0.45);}
-    .btn.primary{background:var(--accent2);}
-    .btn.ghost{background:rgba(255,255,255,0.04);}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--accent);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%;}
+    .app{height:100vh;display:flex;flex-direction:column;overflow:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
 
-    /* top floating host/chat buttons */
-    .floating-top{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:45;}
-    .float-left{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:8px;z-index:45;}
+    /* Top poster (cover) */
+    .poster {
+      height:40vh; min-height:220px; max-height:340px;
+      background-size:cover; background-position:center; position:relative;
+      border-bottom-left-radius:20px; border-bottom-right-radius:20px; overflow:hidden;
+      box-shadow: inset 0 0 80px rgba(0,0,0,0.65);
+    }
+    .poster::after{
+      content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,0.0) 20%, rgba(0,0,0,0.6) 100%);
+    }
+    /* header status imitation (small) */
+    .status-bar{position:absolute;left:12px;right:12px;top:8px;display:flex;justify-content:space-between;align-items:center;z-index:4;color:#fff;font-size:13px;opacity:0.95}
+    .status-left{display:flex;gap:8px;align-items:center}
+    .room-badge{font-weight:700;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:12px;font-size:13px}
+    .status-right{font-size:12px;opacity:0.9}
 
-    /* chat drawer like app */
-    .chat-drawer{position:fixed;left:0;right:0;bottom:0;height:62vh;max-height:78vh;background:linear-gradient(180deg,#0b0b0b,#0a0a0a);border-top-left-radius:16px;border-top-right-radius:16px;padding:10px;box-shadow:0 -18px 40px rgba(0,0,0,0.6);transform:translateY(100%);transition:transform .28s cubic-bezier(.2,.9,.2,1);z-index:60;display:flex;flex-direction:column;}
-    .chat-drawer.open{transform:translateY(0%);}
-    .chat-header{display:flex;align-items:center;justify-content:space-between;padding:6px 2px;}
-    #chat{flex:1;overflow:auto;padding:6px 2px;display:flex;flex-direction:column;gap:8px;}
-    .message{max-width:85%;padding:11px 14px;border-radius:14px;font-size:15px;word-break:break-word;}
-    .me{align-self:flex-end;background:linear-gradient(180deg,#2f44c8,#253399);}
-    .other{align-self:flex-start;background:var(--muted);color:#ddd;}
+    /* Chat overlay area (over entire remaining screen) */
+    .chat-area { flex:1; position:relative; display:flex; flex-direction:column; padding:14px 18px; gap:10px; background:transparent; -webkit-overflow-scrolling:touch; }
 
-    .chat-input{display:flex;gap:8px;margin-top:8px;}
-    .chat-input input{flex:1;padding:12px;border-radius:10px;font-size:15px;background:#111;border:1px solid rgba(255,255,255,0.02);color:var(--text);}
-    .chat-input button{padding:0 16px;}
+    /* messages container that scrolls */
+    .messages {
+      flex:1; overflow:auto; display:flex; flex-direction:column; gap:18px; padding-bottom:22px;
+    }
 
-    /* toast / seek indicators */
-    .seek-toast{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.6);padding:16px 20px;border-radius:12px;font-size:18px;font-weight:700;display:none;z-index:70;color:#fff;box-shadow:0 8px 30px rgba(0,0,0,0.6);}
-    .seek-toast.show{display:block;animation:pop .26s ease;}
+    /* message row */
+    .msg-row { display:flex; align-items:flex-end; gap:10px; }
+    .msg-row.left { justify-content:flex-start; }
+    .msg-row.right { justify-content:flex-end; flex-direction:row-reverse; }
 
-    @keyframes pop{from{transform:translate(-50%,-52%) scale(.96);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+    .avatar {
+      width:var(--avatar-size); height:var(--avatar-size); border-radius:50%; overflow:hidden; flex:0 0 auto; border:2px solid rgba(255,255,255,0.06);
+      box-shadow:0 4px 12px rgba(0,0,0,0.6);
+      background-size:cover; background-position:center;
+      filter:grayscale(1) contrast(0.95) brightness(0.96);
+    }
 
-    /* host panel compact */
-    .host-panel{position:fixed;left:10px;right:10px;bottom:72px;background:linear-gradient(180deg,#141414,#0f0f0f);padding:10px;border-radius:12px;display:none;flex-direction:column;gap:8px;z-index:70;}
-    .host-panel.open{display:flex;}
-    .host-row{display:flex;gap:8px;align-items:center;}
+    .bubble {
+      max-width:68%; padding:8px 12px; border-radius:14px; font-size:15px; line-height:1.2; color:var(--accent);
+      display:flex; flex-direction:column; gap:4px;
+    }
+    .bubble .who { font-weight:700; font-size:13px; color:#cfcfcf; margin-bottom:2px; }
+    .bubble.left { background:var(--bubble-left); border-bottom-left-radius:6px; }
+    .bubble.right { background:var(--bubble-right); border-bottom-right-radius:6px; text-align:right; color:#e8e8e8; }
 
-    /* minimal desktop tweaks */
+    /* Input pill at bottom centered */
+    .input-wrap {
+      display:flex; align-items:center; justify-content:center; padding:12px 16px;
+      background:transparent;
+    }
+    .input-pill {
+      width:100%; max-width:820px; height:52px; background:var(--pill-bg); border-radius:999px; display:flex; align-items:center; padding:8px 12px; gap:10px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.6);
+    }
+    .input-pill input[type="text"] {
+      flex:1; background:transparent; border:none; color:var(--pill-text); font-size:16px; outline:none; padding-left:6px;
+    }
+    .send-btn {
+      width:40px; height:40px; background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border-radius:50%; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto;
+      border:1px solid rgba(255,255,255,0.04);
+    }
+    .send-btn svg{fill:var(--accent); width:18px;height:18px;}
+
+    /* small "я" label on right */
+    .me-label { font-size:12px; opacity:0.9; color:#bdbdbd; margin-top:6px; }
+
+    /* responsive tweaks */
     @media(min-width:900px){
-      .chat-drawer{position:relative;height:320px;border-radius:8px;transform:none;}
-      .host-panel{position:relative;display:flex;bottom:auto;left:auto;right:auto;}
-      .controls-overlay{position:relative;align-items:flex-start;padding:12px;}
+      .poster{height:36vh;}
+      .chat-area{padding:24px 36px;}
+      .bubble{font-size:16px}
+      .input-wrap{padding:18px 24px;}
+      .avatar{--avatar-size:56px}
     }
   </style>
 </head>
 <body>
   <div class="app" id="app">
-    <header>
-      <div class="left">
-        <div class="title">YouTube Вместе</div>
-        <div class="room" id="room">—</div>
-        <div class="status" id="status">offline</div>
-      </div>
-
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button id="hostToggle" class="btn ghost" title="Панель ведущего">≡</button>
-        <button id="chatToggle" class="btn ghost" title="Открыть чат">💬</button>
-      </div>
-    </header>
-
-    <main id="player">
-      <div id="youtube-container"></div>
-
-      <div class="seek-toast" id="seekToast">+10s</div>
-
-      <div class="controls-overlay" id="controlsOverlay">
-        <div class="controls-inner">
-          <button id="playBtn" class="btn primary">▶</button>
-          <button id="rewBtn" class="btn ghost">« 10s</button>
-          <button id="fwdBtn" class="btn ghost">10s »</button>
-          <button id="miniChatBtn" class="btn ghost">💬</button>
+    <div class="poster" id="poster" style="background-image:url('https://i.imgur.com/8Km9tLL.jpg')">
+      <div class="status-bar">
+        <div class="status-left">
+          <div class="room-badge" id="room">Комната</div>
         </div>
+        <div class="status-right" id="role">—</div>
       </div>
-
-      <div class="floating-top float-left" id="floatLeft">
-        <div id="hostBadge" style="background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:10px;font-weight:700;font-size:13px;display:none;">Ведущий</div>
-      </div>
-
-      <div class="floating-top" style="right:12px;top:12px;">
-        <div id="connectionDot" style="width:12px;height:12px;border-radius:50%;background:#aaa;box-shadow:0 0 6px rgba(0,0,0,0.6);"></div>
-      </div>
-    </main>
-
-    <!-- host minimal popup -->
-    <div class="host-panel" id="hostPanel" aria-hidden="true">
-      <div class="host-row">
-        <input id="url" type="text" placeholder="Ссылка или ID YouTube" style="flex:1;" />
-        <button id="btnLoad" class="btn primary">Загрузить</button>
-      </div>
-      <div class="host-row">
-        <button id="btnPlayAll" class="btn primary" style="flex:1;">▶ Запустить у всех</button>
-        <button id="btnPauseAll" class="btn ghost" style="flex:1;">⏸ Остановить</button>
-      </div>
-      <div style="font-size:12px;color:#bbb;">Двойной тап по левой/правой половине плеера — -/+10s. Свайп вверх — открыть чат.</div>
     </div>
 
-    <!-- chat drawer -->
-    <div class="chat-drawer" id="chatDrawer" aria-hidden="true">
-      <div class="chat-header">
-        <div style="font-weight:700">Чат</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <div id="lastSync" style="font-size:12px;color:#bbb;"></div>
-          <button id="closeChat" class="btn ghost">✕</button>
-        </div>
+    <div class="chat-area">
+      <div class="messages" id="messages">
+        <!-- message rows will be appended here -->
       </div>
 
-      <div id="chat"></div>
-
-      <div class="chat-input">
-        <input id="name" type="text" value="Я" style="width:110px;" />
-        <input id="msg" type="text" placeholder="Сообщение..." />
-        <button id="sendBtn" class="btn primary">→</button>
+      <div class="input-wrap">
+        <div class="input-pill" role="search">
+          <input id="msg" type="text" placeholder="Введите текст" aria-label="Сообщение" />
+          <div class="send-btn" id="sendBtn" title="Отправить">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    // ====== Firebase config (оставь или замени) ======
+    // ========== Firebase config ==========
     const firebaseConfig = {
       apiKey: "AIzaSyDUxyJ1SP5BojDMBkRBgKXFtkE8zSxHcJY",
       authDomain: "together-313cc.firebaseapp.com",
@@ -157,333 +140,114 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // ====== Client & room setup ======
+    // ========== Room and client ==========
     const clientId = 'c_' + Math.random().toString(36).slice(2,11);
     const roomId = prompt("Введите ID комнаты:") || "room" + Math.floor(Math.random()*100000);
     document.getElementById('room').textContent = roomId;
-
     const isHost = confirm("Вы ведущий? (будете управлять видео)");
-    document.getElementById('hostBadge').style.display = isHost ? 'block' : 'none';
-    document.getElementById('status').textContent = 'подключение...';
+    document.getElementById('role').textContent = isHost ? '(Ведущий)' : '(Участник)';
 
     const roomRef = db.ref('rooms/' + roomId);
 
-    // ====== Helpers ======
-    function escapeHtml(str){ if (!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
-    function addMessage(name, text, mine){
-      const chat = document.getElementById('chat');
-      const div = document.createElement('div');
-      div.className = 'message ' + (mine ? 'me' : 'other');
-      div.innerHTML = `<strong>${escapeHtml(name)}:</strong> ${escapeHtml(text)}`;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
+    // ========== Utilities ==========
+    function esc(s){ if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function el(tag, cls){ const d = document.createElement(tag); if (cls) d.className = cls; return d; }
+
+    // ========== Chat rendering that matches design ==========
+    function addMessageDOM({name, text, by, avatar}, mine){
+      const messages = document.getElementById('messages');
+      // create row
+      const row = el('div','msg-row ' + (mine ? 'right' : 'left'));
+      // avatar
+      const av = el('div','avatar');
+      av.style.backgroundImage = `url('${avatar || defaultAvatar(name)}')`;
+      // bubble
+      const bubble = el('div','bubble ' + (mine ? 'right' : 'left'));
+      const who = el('div'); who.className = 'who'; who.innerText = mine ? 'Я' : (name || 'Участник');
+      const txt = el('div'); txt.className = 'text'; txt.innerText = text || '';
+      bubble.appendChild(who); bubble.appendChild(txt);
+      if (mine){
+        row.appendChild(av);
+        row.appendChild(bubble);
+        // small "Я" label right of bubble (optional)
+        const meLabel = el('div','me-label'); meLabel.innerText = 'Я';
+        // add label under bubble
+        bubble.appendChild(meLabel);
+      } else {
+        row.appendChild(av);
+        row.appendChild(bubble);
+      }
+      messages.appendChild(row);
+      // auto-scroll sensible
+      messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
     }
 
-    // ====== Chat ======
+    function defaultAvatar(name){
+      // simple placeholder from ui-avatars
+      const initials = (name || 'U').split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
+      // use a data URI SVG with initials (grayscale)
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><rect width='100%' height='100%' fill='#222'/><text x='50%' y='55%' font-family='Arial' font-size='54' fill='#fff' text-anchor='middle' alignment-baseline='middle'>${initials}</text></svg>`;
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    // ========== Sending messages ==========
+    const input = document.getElementById('msg');
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.addEventListener('click', sendMsg);
+    input.addEventListener('keypress', (e)=>{ if (e.key === 'Enter') sendMsg(); });
+
     function sendMsg(){
-      const name = document.getElementById('name').value.trim() || 'Пользователь';
-      const text = document.getElementById('msg').value.trim();
+      const name = (document.getElementById('role').textContent === '(Ведущий)') ? 'Ведущий' : 'Я';
+      const text = input.value.trim();
       if (!text) return;
-      roomRef.child('messages').push({ name, text, time: Date.now(), by: clientId });
-      document.getElementById('msg').value = '';
+      const payload = { name: name, text: text, time: Date.now(), by: clientId, avatar: '' };
+      roomRef.child('messages').push(payload);
+      input.value = '';
     }
-    document.getElementById('sendBtn').addEventListener('click', sendMsg);
-    document.getElementById('msg').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
 
+    // ========== Listen messages ==========
     roomRef.child('messages').on('child_added', snap => {
-      const msg = snap.val();
-      if (!msg) return;
-      const mine = msg.by === clientId;
-      addMessage(msg.name || 'Пользователь', msg.text || '', mine);
-      // if message from others and chat closed, flash toggle
-      if (!mine && !document.getElementById('chatDrawer').classList.contains('open')) {
-        const btn = document.getElementById('chatToggle');
-        btn.animate([{transform:'translateY(0)'},{transform:'translateY(-6px)'},{transform:'translateY(0)'}],{duration:420});
-      }
+      const m = snap.val();
+      if (!m) return;
+      const mine = (m.by === clientId);
+      addMessageDOM({ name: m.name, text: m.text, avatar: m.avatar }, mine);
     });
 
-    // ====== YouTube IFrame API and sync (kept full features) ======
-    function parseYouTubeId(input){
-      if (!input) return null; input = input.trim();
-      const idOnly = input.match(/^[a-zA-Z0-9_-]{11}$/); if (idOnly) return idOnly[0];
-      const patterns = [/(?:v=|\/v\/|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/, /youtube\.com.*(?:\/shorts\/)([a-zA-Z0-9_-]{11})/];
-      for (const r of patterns){ const m = input.match(r); if (m && m[1]) return m[1]; }
-      const fallback = input.match(/([a-zA-Z0-9_-]{11})/); return fallback ? fallback[1] : null;
-    }
+    // ========== Poster click toggles sample actions (play/pause placeholder) ==========
+    // (This file focuses on design; you can keep the YouTube sync code from previous version and integrate here)
+    const poster = document.getElementById('poster');
+    poster.addEventListener('click', () => {
+      // quick visual feedback: small pulse
+      poster.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.998)' }, { transform: 'scale(1)' }], { duration: 240 });
+    });
 
-    let player=null, playerReady=false, pendingLoad=null, currentVideoId=null;
-    (function loadYT(){ const tag=document.createElement('script'); tag.src="https://www.youtube.com/iframe_api"; document.head.appendChild(tag); })();
+    // ========== Pre-populate with some example messages to show layout ==========
+    (function seedDemo(){
+      // only when room empty (avoid duplicates)
+      roomRef.child('messages').limitToFirst(1).once('value').then(snap=>{
+        if (snap.exists()) return;
+        const now = Date.now();
+        const demo = [
+          { name:'Участник', text:'Привет', time:now-60000, by:'u1', avatar:'' },
+          { name:'Участник', text:'смотрим', time:now-40000, by:'u1', avatar:'' },
+          { name:'Участник', text:'Запускай', time:now-20000, by:'u1', avatar:'' },
+          { name:'Я', text:'Окей', time:now-15000, by:clientId, avatar:'' }
+        ];
+        demo.forEach(d => roomRef.child('messages').push(d).catch(()=>{}));
+      }).catch(()=>{});
+    })();
 
-    function onYouTubeIframeAPIReady(){
-      player = new YT.Player('youtube-container', {
-        width:'100%', height:'100%', videoId:'', playerVars:{rel:0,playsinline:1,controls:1,modestbranding:1},
-        events:{ onReady: e=>{ playerReady=true; if (pendingLoad){ applyVideoLoad(pendingLoad.videoId,pendingLoad.start); pendingLoad=null; } if (isHost) startHostPositionSync(); document.getElementById('status').textContent='онлайн'; updateConnectionDot(true); }, onStateChange: onPlayerStateChange }
-      });
-    }
-    window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
-
-    function applyVideoLoad(videoId, startSeconds=0){
-      if (!playerReady){ pendingLoad={videoId,start:startSeconds}; return; }
-      try{ player.loadVideoById({videoId,startSeconds:Math.max(0,startSeconds)}); }catch(e){ player.cueVideoById({videoId,startSeconds:Math.max(0,startSeconds)}); }
-    }
-    function applyPlay(position){ if (!playerReady) return; if (typeof position==='number'){ const cur=player.getCurrentTime(); if (Math.abs(cur-position)>1.0) player.seekTo(position,true); } player.playVideo(); }
-    function applyPause(position){ if (!playerReady) return; if (typeof position==='number'){ const cur=player.getCurrentTime(); if (Math.abs(cur-position)>1.0) player.seekTo(position,true); } player.pauseVideo(); }
-
-    // host pushes state
-    function onPlayerStateChange(event){
-      if (!isHost) return;
-      const state=event.data, now=Date.now(), time = (player && player.getCurrentTime) ? player.getCurrentTime() : 0;
-      if (state===YT.PlayerState.PLAYING) roomRef.child('state').set({ videoId: currentVideoId||null, playing:true, position:time, ts:now, lastBy:clientId }).catch(()=>{});
-      else if (state===YT.PlayerState.PAUSED) roomRef.child('state').set({ videoId: currentVideoId||null, playing:false, position:time, ts:now, lastBy:clientId }).catch(()=>{});
-    }
-
-    // listen state changes
+    // ========== Keep poster image updatable from DB (optional) ==========
     roomRef.child('state').on('value', snap => {
-      const s = snap.val(); if (!s) return;
-      // update UI last sync
-      document.getElementById('lastSync').textContent = s.ts ? new Date(s.ts).toLocaleTimeString() : '';
-      // ignore own commands
-      if (s.lastBy === clientId) return;
-      // if new video
-      if (s.videoId && s.videoId !== currentVideoId){
-        currentVideoId = s.videoId;
-        applyVideoLoad(s.videoId, s.position || 0);
-        setTimeout(()=>{ if (!playerReady) return; if (s.playing) applyPlay(s.position); else applyPause(s.position); }, 500);
-        return;
-      }
-      // same video: sync pos and play/pause
-      if (s.videoId === currentVideoId && playerReady){
-        const localPos = player.getCurrentTime ? player.getCurrentTime() : 0;
-        const remotePos = typeof s.position==='number' ? s.position : localPos;
-        if (Math.abs(localPos - remotePos) > 1.0) player.seekTo(remotePos, true);
-        if (s.playing){ if (player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo(); }
-        else { if (player.getPlayerState() === YT.PlayerState.PLAYING) player.pauseVideo(); }
+      const s = snap.val();
+      if (!s) return;
+      if (s.poster) {
+        document.getElementById('poster').style.backgroundImage = `url('${s.poster}')`;
       }
     });
 
-    // host controls
-    document.getElementById('btnLoad').addEventListener('click', ()=> {
-      const input = document.getElementById('url').value; const vid = parseYouTubeId(input);
-      if (!vid){ alert('Не удалось распознать ID видео.'); return; }
-      currentVideoId = vid;
-      const now = Date.now();
-      roomRef.child('state').set({ videoId:vid, playing:false, position:0, ts:now, lastBy:clientId }).catch(()=>{});
-      applyVideoLoad(vid,0);
-    });
-
-    // play/pause
-    document.getElementById('playBtn').addEventListener('click', ()=> {
-      if (!currentVideoId){ alert('Сначала загрузите видео.'); return; }
-      const pos = playerReady && player.getCurrentTime ? player.getCurrentTime() : 0;
-      roomRef.child('state').set({ videoId:currentVideoId, playing:true, position:pos, ts:Date.now(), lastBy:clientId }).catch(()=>{});
-      if (playerReady) player.playVideo();
-    });
-    document.getElementById('miniChatBtn').addEventListener('click', ()=> toggleChat(true));
-    document.getElementById('rewBtn').addEventListener('click', ()=> seekBy(-10));
-    document.getElementById('fwdBtn').addEventListener('click', ()=> seekBy(10));
-    document.getElementById('btnPlayAll').addEventListener('click', ()=> { document.getElementById('playBtn').click(); });
-    document.getElementById('btnPauseAll').addEventListener('click', ()=> {
-      if (!currentVideoId) return;
-      const pos = playerReady && player.getCurrentTime ? player.getCurrentTime() : 0;
-      roomRef.child('state').set({ videoId:currentVideoId, playing:false, position:pos, ts:Date.now(), lastBy:clientId }).catch(()=>{});
-      if (playerReady) player.pauseVideo();
-    });
-
-    function seekBy(delta){
-      if (!playerReady) return;
-      const cur = player.getCurrentTime();
-      const next = Math.max(0, cur + delta);
-      player.seekTo(next, true);
-      showSeekToast((delta>0?'+':'') + delta + 's');
-      // if host, update state
-      if (isHost && currentVideoId){
-        roomRef.child('state').update({ position: next, ts:Date.now(), lastBy: clientId }).catch(()=>{});
-      }
-    }
-
-    // seek toast
-    const seekToast = document.getElementById('seekToast');
-    let seekTimer = null;
-    function showSeekToast(text){
-      seekToast.textContent = text; seekToast.classList.add('show');
-      if (seekTimer) clearTimeout(seekTimer);
-      seekTimer = setTimeout(()=>{ seekToast.classList.remove('show'); }, 900);
-    }
-
-    // host periodic sync
-    let hostSyncInterval = null;
-    function startHostPositionSync(){
-      if (!isHost) return;
-      if (hostSyncInterval) clearInterval(hostSyncInterval);
-      hostSyncInterval = setInterval(()=> {
-        if (!playerReady || !currentVideoId) return;
-        const pos = player.getCurrentTime ? player.getCurrentTime() : 0;
-        const playing = player.getPlayerState ? (player.getPlayerState() === YT.PlayerState.PLAYING) : false;
-        roomRef.child('state').update({ position: pos, playing: playing, ts: Date.now(), lastBy: clientId }).catch(()=>{});
-      }, 3000);
-    }
-    window.addEventListener('beforeunload', ()=> { if (hostSyncInterval) clearInterval(hostSyncInterval); });
-
-    // initial load state
-    roomRef.child('state').once('value').then(snap => {
-      const s = snap.val(); if (!s || !s.videoId) return;
-      currentVideoId = s.videoId;
-      const start = s.position || 0;
-      if (playerReady) { applyVideoLoad(currentVideoId, start); setTimeout(()=>{ if (s.playing) applyPlay(s.position); else applyPause(s.position); }, 500); }
-      else pendingLoad = { videoId: currentVideoId, start };
-    }).catch(()=>{});
-
-    // ====== Mobile gestures: double tap & swipe up/down & single tap toggle controls ======
-    let lastTap = 0;
-    let tapTimeout = null;
-    const playerEl = document.getElementById('player');
-    const controlsOverlay = document.getElementById('controlsOverlay');
-
-    // single tap toggles controls
-    function toggleControls(show){
-      if (controlsOverlay.style.opacity === '0' || controlsOverlay.style.display === 'none') {
-        controlsOverlay.style.opacity = '1'; controlsOverlay.style.display = 'flex';
-        controlsOverlay.style.transform = 'translateY(0)';
-      } else {
-        controlsOverlay.style.opacity = '0'; controlsOverlay.style.display = 'none';
-      }
-    }
-
-    // handle touch events for double tap and swipe
-    let touchStartY = null, touchStartX = null, touchMoved=false;
-    playerEl.addEventListener('touchstart', (e) => {
-      if (e.touches.length > 1) return;
-      const t = e.touches[0];
-      touchStartY = t.clientY; touchStartX = t.clientX; touchMoved=false;
-      const current = Date.now();
-      const timeSince = current - lastTap;
-      if (timeSince < 300 && timeSince > 20) {
-        // double tap detected
-        lastTap = 0;
-        const w = window.innerWidth;
-        if (touchStartX < w/2) seekBy(-10); else seekBy(10);
-      } else {
-        lastTap = current;
-        // single tap fallback
-        if (tapTimeout) clearTimeout(tapTimeout);
-        tapTimeout = setTimeout(()=>{ toggleControls(); }, 350);
-      }
-    });
-
-    playerEl.addEventListener('touchmove', (e) => {
-      touchMoved = true;
-    });
-
-    playerEl.addEventListener('touchend', (e) => {
-      if (!touchMoved) return;
-      const t = e.changedTouches[0];
-      const dy = (t.clientY - touchStartY);
-      if (dy < -60) { // swipe up
-        toggleChat(true);
-      } else if (dy > 60) { // swipe down
-        toggleChat(false);
-      }
-    });
-
-    // ====== Chat open/close helpers ======
-    function toggleChat(open){
-      const el = document.getElementById('chatDrawer');
-      if (open) { el.classList.add('open'); el.setAttribute('aria-hidden','false'); }
-      else { el.classList.remove('open'); el.setAttribute('aria-hidden','true'); }
-    }
-    document.getElementById('chatToggle').addEventListener('click', ()=> toggleChat(true));
-    document.getElementById('closeChat').addEventListener('click', ()=> toggleChat(false));
-    document.getElementById('miniChatBtn').addEventListener('click', ()=> toggleChat(true));
-    document.getElementById('hostToggle').addEventListener('click', ()=> {
-      const p = document.getElementById('hostPanel');
-      if (!isHost) { alert('Только ведущий может открыть панель.'); return; }
-      p.classList.toggle('open'); p.setAttribute('aria-hidden', !p.classList.contains('open'));
-    });
-
-    // ====== Connection indicator ======
-    function updateConnectionDot(online){
-      const dot = document.getElementById('connectionDot');
-      if (online){ dot.style.background = '#22c55e'; document.getElementById('status').textContent='онлайн'; }
-      else { dot.style.background = '#bdbdbd'; document.getElementById('status').textContent='офлайн'; }
-    }
-    updateConnectionDot(false);
-
-    // ====== Double-role: clicking host button for non-host shows info ======
-    // (handled above)
-
-    // ====== PWA install prompt handling (Android Chrome) ======
-    let deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault(); deferredPrompt = e;
-      // Show simple prompt to user
-      const installBtn = document.createElement('button'); installBtn.className='btn primary'; installBtn.textContent='Установить';
-      installBtn.style.position='fixed'; installBtn.style.left='50%'; installBtn.style.transform='translateX(-50%)'; installBtn.style.bottom='18px'; installBtn.style.zIndex='120';
-      document.body.appendChild(installBtn);
-      installBtn.addEventListener('click', async () => {
-        installBtn.remove();
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-      });
-    });
-
-    // iOS: show hint if not standalone
-    function isiOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent); }
-    if (isiOS() && !window.navigator.standalone) {
-      // show small banner once
-      setTimeout(()=>{ if (!localStorage.getItem('a2hs_shown')){ alert('Чтобы использовать как приложение: нажмите "Поделиться" → "Добавить на экран «Домой»".'); localStorage.setItem('a2hs_shown','1'); } }, 900);
-    }
-
-    // ====== Service worker registration (inline via Blob for single-file deploy) ======
-    if ('serviceWorker' in navigator) {
-      const swCode = `
-        const CACHE_NAME = 'yt-together-v1';
-        const urlsToCache = ['/', '/index.html'];
-        self.addEventListener('install', e=>{ self.skipWaiting(); e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(urlsToCache))); });
-        self.addEventListener('activate', e=>{ e.waitUntil(self.clients.claim()); });
-        self.addEventListener('fetch', e=>{ e.respondWith(caches.match(e.request).then(r=> r || fetch(e.request).catch(()=>caches.match('/index.html')))); });
-      `;
-      const blob = new Blob([swCode], {type:'application/javascript'});
-      const swUrl = URL.createObjectURL(blob);
-      navigator.serviceWorker.register(swUrl).then(()=>console.log('sw registered')).catch(()=>console.warn('sw failed'));
-    }
-
-    // ====== Initial system message ======
-    (function sayOpen(){ roomRef.child('messages').push({ name:'Система', text:`Комната ${roomId} открыта`, time:Date.now(), by:'system' }).catch(()=>{}); })();
-
-    // ====== Initial room state load ======
-    roomRef.child('state').once('value').then(snap => {
-      const s = snap.val(); if (!s || !s.videoId) return;
-      currentVideoId = s.videoId; const start = s.position || 0;
-      if (playerReady) { applyVideoLoad(currentVideoId, start); setTimeout(()=>{ if (s.playing) applyPlay(start); else applyPause(start); }, 500); }
-      else pendingLoad = { videoId: currentVideoId, start };
-    }).catch(()=>{});
-
-    // ====== Small UX: open chat for viewers on first load ======
-    if (!isHost) setTimeout(()=> toggleChat(true), 450);
-
-    // ====== Setup connection dot using onDisconnect ping (simple) ======
-    const presenceRef = db.ref('presence/' + roomId + '/' + clientId);
-    presenceRef.set({ ts: Date.now(), by: clientId, host: isHost }).catch(()=>{});
-    presenceRef.onDisconnect().remove();
-    // monitor presence of any clients
-    db.ref('presence/' + roomId).on('value', snap => {
-      const val = snap.val(); const count = val ? Object.keys(val).length : 0;
-      document.getElementById('status').textContent = (count>0? 'онлайн':'пусто') + ' • ' + count;
-      updateConnectionDot(!!val);
-    });
-
-    // ====== Extra: double-tap already implemented above via touchstart; clicking overlay toggles controls ======
-    // Prevent screen from sleeping (Wake Lock API) when host is active (optional)
-    async function requestWakeLock(){
-      try {
-        if ('wakeLock' in navigator && isHost) {
-          const wl = await navigator.wakeLock.request('screen');
-          wl.addEventListener('release', ()=>console.log('wakeLock released'));
-        }
-      } catch(e){ console.warn('wake lock failed', e); }
-    }
-    requestWakeLock();
+    // ========== Accessibility: focus input on open ==========
+    (function focusInput(){ setTimeout(()=>{ input.focus(); },600); })();
 
   </script>
 </body>
