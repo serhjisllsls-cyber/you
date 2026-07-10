@@ -6,10 +6,9 @@
     <title>YouTube Вместе</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-        
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', system-ui, sans-serif;
             background: #0a0a0a;
             color: #fff;
             height: 100vh;
@@ -18,153 +17,124 @@
             flex-direction: column;
         }
         #header {
-            padding: 15px 16px;
+            padding: 14px 16px;
             background: #111;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #222;
         }
-        #player-container {
-            flex: 1;
-            background: #000;
-            position: relative;
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        #chat {
-            flex: 0 0 280px;
-            overflow-y: auto;
-            padding: 12px;
-            background: #111;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .message {
-            max-width: 82%;
-            padding: 11px 15px;
-            border-radius: 18px;
-            font-size: 15.5px;
-            line-height: 1.4;
-        }
-        .me {
-            align-self: flex-end;
-            background: #3f51b5;
-            border-bottom-right-radius: 6px;
-        }
-        .other {
-            align-self: flex-start;
-            background: #1f1f1f;
-            border-bottom-left-radius: 6px;
-        }
+        #player-container { flex: 1; background: #000; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; }
+        #chat { flex: 0 0 260px; overflow-y: auto; padding: 12px; background: #111; gap: 8px; display: flex; flex-direction: column; }
+        .message { max-width: 85%; padding: 11px 15px; border-radius: 18px; font-size: 15.5px; }
+        .me { align-self: flex-end; background: #3f51b5; border-bottom-right-radius: 6px; }
+        .other { align-self: flex-start; background: #1f1f1f; border-bottom-left-radius: 6px; }
         #controls {
             padding: 14px 16px;
             background: #111;
             border-top: 1px solid #222;
-            gap: 10px;
             display: flex;
             flex-direction: column;
+            gap: 10px;
         }
-        input {
-            background: #222;
-            border: none;
-            color: white;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-size: 16px;
-        }
-        button {
-            background: #ff0000;
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 16px;
-        }
-        .row {
-            display: flex;
-            gap: 8px;
-        }
-        .small-btn {
-            padding: 14px 18px;
-            font-size: 15px;
-        }
+        input { background: #222; border: none; color: white; padding: 14px; border-radius: 12px; font-size: 16px; }
+        button { background: #ff0000; color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 600; font-size: 16px; }
+        .row { display: flex; gap: 8px; }
+        .host-controls { background: #1a1a1a; padding: 10px; border-radius: 10px; margin-top: 8px; }
     </style>
 </head>
 <body>
     <div id="header">
-        <div style="font-weight:600;">YouTube Вместе</div>
-        <div style="font-size:15px;">Комната: <b id="roomId"></b></div>
+        <div><strong>YouTube Вместе</strong> <span id="role" style="font-size:14px; color:#aaa;"></span></div>
+        <div>Комната: <b id="roomId"></b></div>
     </div>
 
     <div id="player-container">
-        <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
+        <iframe id="player" allowfullscreen allow="autoplay"></iframe>
     </div>
 
     <div id="chat"></div>
 
     <div id="controls">
-        <input type="text" id="videoUrl" placeholder="Вставьте ссылку на YouTube видео">
-        <div class="row">
-            <button onclick="loadVideo()" style="flex:1">▶ Загрузить видео</button>
-            <button onclick="syncNow()" class="small-btn">🔄 Синхр</button>
+        <input type="text" id="videoUrl" placeholder="Вставьте ссылку YouTube">
+        <button onclick="loadVideo()">▶ Загрузить видео</button>
+
+        <div class="host-controls" id="hostControls">
+            <div class="row">
+                <button onclick="playVideo()" style="flex:1; background:#4caf50;">▶ Play</button>
+                <button onclick="pauseVideo()" style="flex:1; background:#f44336;">⏸ Pause</button>
+            </div>
         </div>
+
         <div class="row">
             <input type="text" id="username" value="Я" style="width:110px;">
-            <input type="text" id="message" placeholder="Напишите сообщение..." style="flex:1;" onkeypress="if(event.key==='Enter') sendMessage()">
+            <input type="text" id="message" placeholder="Сообщение..." style="flex:1;" onkeypress="if(event.key==='Enter') sendMessage()">
             <button onclick="sendMessage()">→</button>
         </div>
     </div>
 
     <script>
-        const roomId = prompt("Введите ID комнаты или оставьте пустым для создания новой:") || "YT" + Math.floor(Math.random()*100000);
+        const roomId = prompt("ID комнаты:") || "YT" + Math.floor(Math.random()*100000);
         document.getElementById("roomId").textContent = roomId;
+        const isHost = confirm("Вы ведущий (хост)?\n\nДа = можете управлять видео\nНет = только смотрите");
+        document.getElementById("role").textContent = isHost ? "(Вы — ведущий)" : "(Зритель)";
+
+        // Скрываем кнопки управления, если не хост
+        if (!isHost) {
+            document.getElementById("hostControls").style.display = "none";
+        }
+
+        let currentVideoId = null;
 
         function extractVideoId(url) {
-            const match = url.match(/(?:youtu\.be\/|youtube\.com.*v=|v\/|embed\/)([^#\&\?]+)/);
-            return match ? match[1] : null;
+            return url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/)?.[1];
         }
 
         function loadVideo() {
             const url = document.getElementById("videoUrl").value.trim();
             const videoId = extractVideoId(url);
             if (videoId) {
+                currentVideoId = videoId;
                 document.getElementById("player").src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
-                addMessage("Система", "✅ Видео загружено", false);
+                addMessage("Система", `📽 Видео загружено (ID: ${videoId})`, false);
             } else {
-                alert("Не удалось распознать ссылку YouTube");
+                alert("Не удалось распознать ссылку");
             }
         }
 
-        function sendMessage() {
-            const msgInput = document.getElementById("message");
-            const username = document.getElementById("username").value.trim() || "Пользователь";
-            if (msgInput.value.trim() === "") return;
-            
-            addMessage(username, msgInput.value, true);
-            msgInput.value = "";
+        function playVideo() {
+            if (currentVideoId) {
+                const iframe = document.getElementById("player");
+                iframe.src = `https://www.youtube.com/embed/${currentVideoId}?autoplay=1&rel=0&playsinline=1`;
+            }
         }
 
-        function addMessage(user, text, isMine) {
+        function pauseVideo() {
+            const iframe = document.getElementById("player");
+            iframe.src = iframe.src.replace("autoplay=1", "autoplay=0");
+        }
+
+        function sendMessage() {
+            const input = document.getElementById("message");
+            const name = document.getElementById("username").value.trim() || "Я";
+            if (input.value.trim()) {
+                addMessage(name, input.value, true);
+                input.value = "";
+            }
+        }
+
+        function addMessage(user, text, isMe) {
             const chat = document.getElementById("chat");
             const msg = document.createElement("div");
-            msg.className = `message ${isMine ? 'me' : 'other'}`;
+            msg.className = `message ${isMe ? 'me' : 'other'}`;
             msg.innerHTML = `<strong>${user}:</strong><br>${text}`;
             chat.appendChild(msg);
             chat.scrollTop = chat.scrollHeight;
         }
 
-        function syncNow() {
-            alert("🔄 Синхронизация:\n\n1. Нажмите паузу у обоих\n2. Перемотайте на одинаковое время\n3. Одновременно нажмите Play");
-        }
-
-        // Стартовое сообщение
-        addMessage("Система", `Комната <b>${roomId}</b> создана!\nПоделитесь ID с другом.`, false);
+        addMessage("Система", `Комната <b>${roomId}</b> готова!`, false);
+        if (isHost) addMessage("Система", "Вы можете управлять воспроизведением", false);
     </script>
 </body>
 </html>
