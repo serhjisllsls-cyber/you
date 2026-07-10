@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
-  <title>YouTube Вместе</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+  <title>YouTube Вместе — PWA</title>
+
+  <!-- iOS PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.json" />
 
   <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -11,152 +17,135 @@
 
   <style>
     :root{
-      --bg: #0a0a0a;
-      --panel: #111;
-      --muted: #1f1f1f;
-      --accent: #ff0000;
-      --accent-2: #4caf50;
-      --text: #fff;
-      --glass: rgba(255,255,255,0.03);
-      --touch-size: 54px;
+      --bg:#050506; --panel:#0f0f10; --muted:#1f1f1f; --accent:#ff3b30; --accent2:#007aff; --text:#fff;
+      --touch:56px; --radius:12px;
     }
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%;}
+    .app{display:flex;flex-direction:column;height:100vh;box-sizing:border-box;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+    header{height:56px;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(180deg,rgba(0,0,0,0.28),transparent);position:relative;z-index:40;}
+    .left{display:flex;align-items:center;gap:10px;}
+    .title{font-weight:700;font-size:16px;}
+    .room{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:10px;font-size:13px;color:#ddd;}
+    .status{font-size:12px;color:#bfbfbf;margin-left:8px;}
 
-    /* Mobile-first layout */
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
-    .app {display:flex;flex-direction:column;height:100vh;box-sizing:border-box;}
-    header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--panel);box-shadow:0 1px 0 rgba(255,255,255,0.03);gap:8px;}
-    .title{font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px;}
-    .subtitle{font-size:13px;color:#cfcfcf;}
-    .room-badge{background:var(--glass);padding:6px 8px;border-radius:8px;font-weight:600;font-size:13px;}
-
-    /* Player area (flex grows) */
-    #player{flex:1;display:flex;align-items:stretch;position:relative;overflow:hidden;background:#000;}
+    /* player area */
+    #player{flex:1;position:relative;background:#000;display:flex;align-items:stretch;overflow:hidden;}
     #youtube-container{width:100%;height:100%;}
+    .controls-overlay{position:absolute;left:0;right:0;bottom:0;padding:8px;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;}
+    .controls-inner{display:flex;gap:12px;align-items:center;pointer-events:auto;backdrop-filter:blur(6px);background:linear-gradient(180deg,rgba(0,0,0,0.24),rgba(0,0,0,0.36));padding:8px;border-radius:14px;margin-bottom:8px;}
+    .btn{min-width:48px;min-height:var(--touch);padding:12px 14px;border-radius:10px;border:none;color:var(--text);font-weight:700;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,0.45);}
+    .btn.primary{background:var(--accent2);}
+    .btn.ghost{background:rgba(255,255,255,0.04);}
 
-    /* Floating bottom controls - big touch targets */
-    .bottom-controls{
-      position:fixed;left:0;right:0;bottom:env(safe-area-inset-bottom,0);display:flex;gap:8px;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.55));
-      align-items:center;box-sizing:border-box;justify-content:space-between;
-      pointer-events:none;
-    }
-    .controls-inner{width:100%;max-width:1100px;margin:0 auto;display:flex;gap:8px;pointer-events:auto;}
-    .btn{
-      background:var(--accent);color:var(--text);border:none;border-radius:10px;padding:12px 14px;font-weight:700;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
-      min-height:var(--touch-size);box-shadow:0 4px 14px rgba(0,0,0,0.4);
-    }
-    .btn.secondary{background:var(--muted);color:#ddd;}
-    .btn.success{background:var(--accent-2);}
+    /* top floating host/chat buttons */
+    .floating-top{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:45;}
+    .float-left{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:8px;z-index:45;}
 
-    /* Host compact controls (for mobile) */
-    .host-compact{display:flex;gap:8px;align-items:center;}
-    .host-panel{position:fixed;left:8px;right:8px;bottom:70px;background:linear-gradient(180deg,#141414, #0f0f0f);padding:10px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:none;flex-direction:column;gap:8px;z-index:60;}
-    .host-panel.open{display:flex;}
-
-    input[type="text"]{background:#222;border:none;color:var(--text);padding:10px;border-radius:10px;font-size:15px;outline:none;}
-    .row{display:flex;gap:8px;align-items:center;}
-
-    /* Chat drawer from bottom */
-    .chat-drawer{
-      position:fixed;left:0;right:0;bottom:0;height:56vh;max-height:70vh;background:var(--panel);border-top-left-radius:12px;border-top-right-radius:12px;padding:10px;box-shadow:0 -8px 30px rgba(0,0,0,0.6);transform:translateY(100%);transition:transform .28s ease;z-index:70;display:flex;flex-direction:column;
-      padding-bottom:calc(env(safe-area-inset-bottom,12px) + 12px);
-    }
+    /* chat drawer like app */
+    .chat-drawer{position:fixed;left:0;right:0;bottom:0;height:62vh;max-height:78vh;background:linear-gradient(180deg,#0b0b0b,#0a0a0a);border-top-left-radius:16px;border-top-right-radius:16px;padding:10px;box-shadow:0 -18px 40px rgba(0,0,0,0.6);transform:translateY(100%);transition:transform .28s cubic-bezier(.2,.9,.2,1);z-index:60;display:flex;flex-direction:column;}
     .chat-drawer.open{transform:translateY(0%);}
-
+    .chat-header{display:flex;align-items:center;justify-content:space-between;padding:6px 2px;}
     #chat{flex:1;overflow:auto;padding:6px 2px;display:flex;flex-direction:column;gap:8px;}
-    .message{max-width:85%;padding:11px 14px;border-radius:14px;font-size:15.5px;word-break:break-word;}
-    .me{align-self:flex-end;background:#2b3db2;}
-    .other{align-self:flex-start;background:var(--muted);}
+    .message{max-width:85%;padding:11px 14px;border-radius:14px;font-size:15px;word-break:break-word;}
+    .me{align-self:flex-end;background:linear-gradient(180deg,#2f44c8,#253399);}
+    .other{align-self:flex-start;background:var(--muted);color:#ddd;}
 
     .chat-input{display:flex;gap:8px;margin-top:8px;}
-    .chat-input input{flex:1;padding:12px;border-radius:10px;font-size:15px;}
+    .chat-input input{flex:1;padding:12px;border-radius:10px;font-size:15px;background:#111;border:1px solid rgba(255,255,255,0.02);color:var(--text);}
     .chat-input button{padding:0 16px;}
 
-    /* Top-right floating toggles */
-    .top-actions{display:flex;gap:8px;align-items:center;}
-    .icon-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:10px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;}
+    /* toast / seek indicators */
+    .seek-toast{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.6);padding:16px 20px;border-radius:12px;font-size:18px;font-weight:700;display:none;z-index:70;color:#fff;box-shadow:0 8px 30px rgba(0,0,0,0.6);}
+    .seek-toast.show{display:block;animation:pop .26s ease;}
 
-    /* Desktop / larger screens adjustments */
+    @keyframes pop{from{transform:translate(-50%,-52%) scale(.96);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+
+    /* host panel compact */
+    .host-panel{position:fixed;left:10px;right:10px;bottom:72px;background:linear-gradient(180deg,#141414,#0f0f0f);padding:10px;border-radius:12px;display:none;flex-direction:column;gap:8px;z-index:70;}
+    .host-panel.open{display:flex;}
+    .host-row{display:flex;gap:8px;align-items:center;}
+
+    /* minimal desktop tweaks */
     @media(min-width:900px){
-      header{padding:12px 20px;}
-      .host-panel{position:relative;display:flex;background:transparent;padding:0;border-radius:0;box-shadow:none;flex-direction:row;align-items:center;}
-      .bottom-controls{position:relative;background:transparent;padding:12px 20px;box-shadow:none;justify-content:flex-start;}
-      .chat-drawer{position:relative;transform:none;height:320px;border-radius:8px;max-height:360px;}
-      .app{height:100vh;}
-      #player{height:60vh;}
+      .chat-drawer{position:relative;height:320px;border-radius:8px;transform:none;}
+      .host-panel{position:relative;display:flex;bottom:auto;left:auto;right:auto;}
+      .controls-overlay{position:relative;align-items:flex-start;padding:12px;}
     }
-
-    /* Accessibility focus */
-    .btn:focus,.icon-btn:focus{outline:2px solid rgba(255,255,255,0.1);outline-offset:2px;}
-
   </style>
 </head>
 <body>
-  <div class="app">
+  <div class="app" id="app">
     <header>
-      <div style="display:flex;align-items:center;gap:10px;">
+      <div class="left">
         <div class="title">YouTube Вместе</div>
-        <div class="room-badge" id="room">—</div>
-        <div class="subtitle" id="role" style="margin-left:6px;"></div>
+        <div class="room" id="room">—</div>
+        <div class="status" id="status">offline</div>
       </div>
 
-      <div class="top-actions">
-        <button class="icon-btn" id="btnToggleHost" title="Панель ведущего">≡</button>
-        <button class="icon-btn" id="btnToggleChat" title="Чат">💬</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="hostToggle" class="btn ghost" title="Панель ведущего">≡</button>
+        <button id="chatToggle" class="btn ghost" title="Открыть чат">💬</button>
       </div>
     </header>
 
     <main id="player">
       <div id="youtube-container"></div>
+
+      <div class="seek-toast" id="seekToast">+10s</div>
+
+      <div class="controls-overlay" id="controlsOverlay">
+        <div class="controls-inner">
+          <button id="playBtn" class="btn primary">▶</button>
+          <button id="rewBtn" class="btn ghost">« 10s</button>
+          <button id="fwdBtn" class="btn ghost">10s »</button>
+          <button id="miniChatBtn" class="btn ghost">💬</button>
+        </div>
+      </div>
+
+      <div class="floating-top float-left" id="floatLeft">
+        <div id="hostBadge" style="background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:10px;font-weight:700;font-size:13px;display:none;">Ведущий</div>
+      </div>
+
+      <div class="floating-top" style="right:12px;top:12px;">
+        <div id="connectionDot" style="width:12px;height:12px;border-radius:50%;background:#aaa;box-shadow:0 0 6px rgba(0,0,0,0.6);"></div>
+      </div>
     </main>
 
-    <!-- Floating bottom controls -->
-    <div class="bottom-controls" aria-hidden="false">
-      <div class="controls-inner">
-        <div style="display:flex;gap:8px;flex:1;">
-          <button id="btnPlay" class="btn success" aria-label="Запустить">▶ Запустить</button>
-          <button id="btnPause" class="btn secondary" aria-label="Пауза">⏸ Пауза</button>
-        </div>
-
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button id="btnFull" class="btn secondary" title="Полноэкранный просмотр">⤢</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Compact host panel (popup on mobile) -->
+    <!-- host minimal popup -->
     <div class="host-panel" id="hostPanel" aria-hidden="true">
-      <div class="row" style="width:100%;gap:8px;">
-        <input id="url" type="text" placeholder="Вставьте ссылку или ID YouTube" aria-label="URL видео" />
-        <button id="btnLoad" class="btn">Загрузить</button>
+      <div class="host-row">
+        <input id="url" type="text" placeholder="Ссылка или ID YouTube" style="flex:1;" />
+        <button id="btnLoad" class="btn primary">Загрузить</button>
       </div>
-      <div class="row" style="width:100%;gap:8px;">
-        <button id="btnPlayAll" class="btn success" style="flex:1;">▶ Запустить у всех</button>
-        <button id="btnPauseAll" class="btn secondary" style="flex:1;">⏸ Остановить у всех</button>
+      <div class="host-row">
+        <button id="btnPlayAll" class="btn primary" style="flex:1;">▶ Запустить у всех</button>
+        <button id="btnPauseAll" class="btn ghost" style="flex:1;">⏸ Остановить</button>
       </div>
+      <div style="font-size:12px;color:#bbb;">Двойной тап по левой/правой половине плеера — -/+10s. Свайп вверх — открыть чат.</div>
     </div>
 
-    <!-- Chat drawer -->
-    <div class="chat-drawer" id="chatDrawer" aria-hidden="true" role="dialog" aria-label="Чат">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;">
-        <div style="font-weight:700;">Чат</div>
+    <!-- chat drawer -->
+    <div class="chat-drawer" id="chatDrawer" aria-hidden="true">
+      <div class="chat-header">
+        <div style="font-weight:700">Чат</div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <div id="chatInfo" style="font-size:13px;color:#bbb;"></div>
-          <button class="icon-btn" id="btnCloseChat" aria-label="Закрыть чат">✕</button>
+          <div id="lastSync" style="font-size:12px;color:#bbb;"></div>
+          <button id="closeChat" class="btn ghost">✕</button>
         </div>
       </div>
 
       <div id="chat"></div>
 
       <div class="chat-input">
-        <input id="name" type="text" value="Я" style="width:120px;" aria-label="Имя"/>
-        <input id="msg" type="text" placeholder="Сообщение..." aria-label="Сообщение" />
-        <button id="btnSend" class="btn" aria-label="Отправить">→</button>
+        <input id="name" type="text" value="Я" style="width:110px;" />
+        <input id="msg" type="text" placeholder="Сообщение..." />
+        <button id="sendBtn" class="btn primary">→</button>
       </div>
     </div>
   </div>
 
   <script>
-    // ====== Конфигурация Firebase (не трогать, если используете свой проект) ======
+    // ====== Firebase config (оставь или замени) ======
     const firebaseConfig = {
       apiKey: "AIzaSyDUxyJ1SP5BojDMBkRBgKXFtkE8zSxHcJY",
       authDomain: "together-313cc.firebaseapp.com",
@@ -165,287 +154,337 @@
       messagingSenderId: "547247117130",
       appId: "1:547247117130:web:acb59e4e760a71bf4167b3"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // ====== Client & room setup ======
     const clientId = 'c_' + Math.random().toString(36).slice(2,11);
     const roomId = prompt("Введите ID комнаты:") || "room" + Math.floor(Math.random()*100000);
-    document.getElementById("room").textContent = roomId;
+    document.getElementById('room').textContent = roomId;
 
     const isHost = confirm("Вы ведущий? (будете управлять видео)");
-    document.getElementById("role").textContent = isHost ? "(Ведущий)" : "(Зритель)";
+    document.getElementById('hostBadge').style.display = isHost ? 'block' : 'none';
+    document.getElementById('status').textContent = 'подключение...';
 
-    // Показывать hostPanel только для ведущего
-    const hostPanel = document.getElementById('hostPanel');
-    const btnToggleHost = document.getElementById('btnToggleHost');
-    if (!isHost) {
-      btnToggleHost.style.display = 'none';
-      hostPanel.style.display = 'none';
-    }
-
-    // Toggle host panel
-    btnToggleHost.addEventListener('click', () => {
-      hostPanel.classList.toggle('open');
-      hostPanel.setAttribute('aria-hidden', !hostPanel.classList.contains('open'));
-    });
-
-    // Chat drawer toggles
-    const chatDrawer = document.getElementById('chatDrawer');
-    const btnToggleChat = document.getElementById('btnToggleChat');
-    const btnCloseChat = document.getElementById('btnCloseChat');
-    btnToggleChat.addEventListener('click', () => {
-      chatDrawer.classList.add('open');
-      chatDrawer.setAttribute('aria-hidden', 'false');
-    });
-    btnCloseChat.addEventListener('click', () => {
-      chatDrawer.classList.remove('open');
-      chatDrawer.setAttribute('aria-hidden', 'true');
-    });
-
-    // Bottom controls full screen
-    const btnFull = document.getElementById('btnFull');
-    btnFull.addEventListener('click', async () => {
-      const elem = document.documentElement;
-      if (!document.fullscreenElement) {
-        try { await elem.requestFullscreen(); }
-        catch(e){ console.warn(e); }
-      } else {
-        try { await document.exitFullscreen(); } catch(e) { console.warn(e); }
-      }
-    });
+    const roomRef = db.ref('rooms/' + roomId);
 
     // ====== Helpers ======
-    function escapeHtml(str){
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
+    function escapeHtml(str){ if (!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
     function addMessage(name, text, mine){
-      const chat = document.getElementById("chat");
-      const div = document.createElement("div");
+      const chat = document.getElementById('chat');
+      const div = document.createElement('div');
       div.className = 'message ' + (mine ? 'me' : 'other');
       div.innerHTML = `<strong>${escapeHtml(name)}:</strong> ${escapeHtml(text)}`;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    // ====== Chat logic ======
-    const roomRef = db.ref('rooms/' + roomId);
+    // ====== Chat ======
     function sendMsg(){
       const name = document.getElementById('name').value.trim() || 'Пользователь';
       const text = document.getElementById('msg').value.trim();
       if (!text) return;
-      const payload = { name, text, time: Date.now(), by: clientId };
-      roomRef.child('messages').push(payload);
+      roomRef.child('messages').push({ name, text, time: Date.now(), by: clientId });
       document.getElementById('msg').value = '';
     }
-    document.getElementById('btnSend').addEventListener('click', sendMsg);
+    document.getElementById('sendBtn').addEventListener('click', sendMsg);
     document.getElementById('msg').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
 
-    roomRef.child('messages').on('child_added', (snap) => {
+    roomRef.child('messages').on('child_added', snap => {
       const msg = snap.val();
       if (!msg) return;
       const mine = msg.by === clientId;
       addMessage(msg.name || 'Пользователь', msg.text || '', mine);
-      // show chat drawer on mobile when new message arrives (but not spammy)
-      if (!chatDrawer.classList.contains('open') && !mine) {
-        // briefly flash the chat toggle button
-        const btn = document.getElementById('btnToggleChat');
+      // if message from others and chat closed, flash toggle
+      if (!mine && !document.getElementById('chatDrawer').classList.contains('open')) {
+        const btn = document.getElementById('chatToggle');
         btn.animate([{transform:'translateY(0)'},{transform:'translateY(-6px)'},{transform:'translateY(0)'}],{duration:420});
       }
     });
 
-    // ====== YouTube and sync logic (kept from previous improved version) ======
+    // ====== YouTube IFrame API and sync (kept full features) ======
     function parseYouTubeId(input){
-      if (!input) return null;
-      input = input.trim();
-      const idOnly = input.match(/^[a-zA-Z0-9_-]{11}$/);
-      if (idOnly) return idOnly[0];
-      const patterns = [
-        /(?:v=|\/v\/|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/,
-        /youtube\.com.*(?:\/shorts\/)([a-zA-Z0-9_-]{11})/
-      ];
-      for (const r of patterns) {
-        const m = input.match(r);
-        if (m && m[1]) return m[1];
-      }
-      const fallback = input.match(/([a-zA-Z0-9_-]{11})/);
-      return fallback ? fallback[1] : null;
+      if (!input) return null; input = input.trim();
+      const idOnly = input.match(/^[a-zA-Z0-9_-]{11}$/); if (idOnly) return idOnly[0];
+      const patterns = [/(?:v=|\/v\/|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/, /youtube\.com.*(?:\/shorts\/)([a-zA-Z0-9_-]{11})/];
+      for (const r of patterns){ const m = input.match(r); if (m && m[1]) return m[1]; }
+      const fallback = input.match(/([a-zA-Z0-9_-]{11})/); return fallback ? fallback[1] : null;
     }
 
-    let player = null;
-    let playerReady = false;
-    let pendingLoad = null;
-    let currentVideoId = null;
-
-    (function loadYT(){
-      const tag = document.createElement('script');
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(tag);
-    })();
+    let player=null, playerReady=false, pendingLoad=null, currentVideoId=null;
+    (function loadYT(){ const tag=document.createElement('script'); tag.src="https://www.youtube.com/iframe_api"; document.head.appendChild(tag); })();
 
     function onYouTubeIframeAPIReady(){
       player = new YT.Player('youtube-container', {
-        width:'100%',height:'100%',
-        videoId:'',
-        playerVars:{rel:0,playsinline:1,controls:1,modestbranding:1},
-        events:{
-          onReady: (e) => {
-            playerReady = true;
-            if (pendingLoad) {
-              applyVideoLoad(pendingLoad.videoId, pendingLoad.start);
-              pendingLoad = null;
-            }
-            if (isHost) startHostPositionSync();
-          },
-          onStateChange: onPlayerStateChange
-        }
+        width:'100%', height:'100%', videoId:'', playerVars:{rel:0,playsinline:1,controls:1,modestbranding:1},
+        events:{ onReady: e=>{ playerReady=true; if (pendingLoad){ applyVideoLoad(pendingLoad.videoId,pendingLoad.start); pendingLoad=null; } if (isHost) startHostPositionSync(); document.getElementById('status').textContent='онлайн'; updateConnectionDot(true); }, onStateChange: onPlayerStateChange }
       });
     }
     window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
 
-    function applyVideoLoad(videoId, startSeconds = 0){
-      if (!playerReady) {
-        pendingLoad = { videoId, start: startSeconds };
-        return;
-      }
-      try { player.loadVideoById({ videoId, startSeconds: Math.max(0, startSeconds) }); }
-      catch(e) { player.cueVideoById({ videoId, startSeconds: Math.max(0, startSeconds) }); }
+    function applyVideoLoad(videoId, startSeconds=0){
+      if (!playerReady){ pendingLoad={videoId,start:startSeconds}; return; }
+      try{ player.loadVideoById({videoId,startSeconds:Math.max(0,startSeconds)}); }catch(e){ player.cueVideoById({videoId,startSeconds:Math.max(0,startSeconds)}); }
     }
-    function applyPlay(position){
-      if (!playerReady) return;
-      if (typeof position === 'number') {
-        const cur = player.getCurrentTime();
-        if (Math.abs(cur - position) > 1.0) player.seekTo(position, true);
-      }
-      player.playVideo();
-    }
-    function applyPause(position){
-      if (!playerReady) return;
-      if (typeof position === 'number') {
-        const cur = player.getCurrentTime();
-        if (Math.abs(cur - position) > 1.0) player.seekTo(position, true);
-      }
-      player.pauseVideo();
-    }
+    function applyPlay(position){ if (!playerReady) return; if (typeof position==='number'){ const cur=player.getCurrentTime(); if (Math.abs(cur-position)>1.0) player.seekTo(position,true); } player.playVideo(); }
+    function applyPause(position){ if (!playerReady) return; if (typeof position==='number'){ const cur=player.getCurrentTime(); if (Math.abs(cur-position)>1.0) player.seekTo(position,true); } player.pauseVideo(); }
 
-    // Host updates state
+    // host pushes state
     function onPlayerStateChange(event){
       if (!isHost) return;
-      const state = event.data;
-      const now = Date.now();
-      const time = player && player.getCurrentTime ? player.getCurrentTime() : 0;
-      if (state === YT.PlayerState.PLAYING) {
-        roomRef.child('state').set({ videoId: currentVideoId || null, playing: true, position: time, ts: now, lastBy: clientId }).catch(console.error);
-      } else if (state === YT.PlayerState.PAUSED) {
-        roomRef.child('state').set({ videoId: currentVideoId || null, playing: false, position: time, ts: now, lastBy: clientId }).catch(console.error);
-      }
+      const state=event.data, now=Date.now(), time = (player && player.getCurrentTime) ? player.getCurrentTime() : 0;
+      if (state===YT.PlayerState.PLAYING) roomRef.child('state').set({ videoId: currentVideoId||null, playing:true, position:time, ts:now, lastBy:clientId }).catch(()=>{});
+      else if (state===YT.PlayerState.PAUSED) roomRef.child('state').set({ videoId: currentVideoId||null, playing:false, position:time, ts:now, lastBy:clientId }).catch(()=>{});
     }
 
-    // Listen for changes
-    roomRef.child('state').on('value', (snap) => {
-      const s = snap.val();
-      if (!s) return;
-      if (s.lastBy === clientId) return; // ignore own
-      if (s.videoId && s.videoId !== currentVideoId) {
+    // listen state changes
+    roomRef.child('state').on('value', snap => {
+      const s = snap.val(); if (!s) return;
+      // update UI last sync
+      document.getElementById('lastSync').textContent = s.ts ? new Date(s.ts).toLocaleTimeString() : '';
+      // ignore own commands
+      if (s.lastBy === clientId) return;
+      // if new video
+      if (s.videoId && s.videoId !== currentVideoId){
         currentVideoId = s.videoId;
         applyVideoLoad(s.videoId, s.position || 0);
-        setTimeout(()=>{ if (!playerReady) return; if (s.playing) applyPlay(s.position); else applyPause(s.position); },500);
+        setTimeout(()=>{ if (!playerReady) return; if (s.playing) applyPlay(s.position); else applyPause(s.position); }, 500);
         return;
       }
-      if (s.videoId === currentVideoId) {
-        if (!playerReady) return;
+      // same video: sync pos and play/pause
+      if (s.videoId === currentVideoId && playerReady){
         const localPos = player.getCurrentTime ? player.getCurrentTime() : 0;
-        const remotePos = typeof s.position === 'number' ? s.position : localPos;
-        const diff = Math.abs(localPos - remotePos);
-        if (diff > 1.0) player.seekTo(remotePos, true);
-        if (s.playing) { if (player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo(); }
+        const remotePos = typeof s.position==='number' ? s.position : localPos;
+        if (Math.abs(localPos - remotePos) > 1.0) player.seekTo(remotePos, true);
+        if (s.playing){ if (player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo(); }
         else { if (player.getPlayerState() === YT.PlayerState.PLAYING) player.pauseVideo(); }
       }
     });
 
-    // Host buttons
-    document.getElementById('btnLoad').addEventListener('click', () => {
-      const input = document.getElementById('url').value;
-      const vid = parseYouTubeId(input);
-      if (!vid) { alert('Не удалось распознать ID видео. Вставьте ссылку или сам ID (11 символов).'); return; }
+    // host controls
+    document.getElementById('btnLoad').addEventListener('click', ()=> {
+      const input = document.getElementById('url').value; const vid = parseYouTubeId(input);
+      if (!vid){ alert('Не удалось распознать ID видео.'); return; }
       currentVideoId = vid;
       const now = Date.now();
-      roomRef.child('state').set({ videoId: vid, playing: false, position: 0, ts: now, lastBy: clientId }).catch(console.error);
-      applyVideoLoad(vid, 0);
+      roomRef.child('state').set({ videoId:vid, playing:false, position:0, ts:now, lastBy:clientId }).catch(()=>{});
+      applyVideoLoad(vid,0);
     });
 
-    // Bottom controls (also available to host & viewers, but host commands are authoritative)
-    document.getElementById('btnPlay').addEventListener('click', () => {
-      if (!currentVideoId) { alert('Сначала загрузите видео.'); return; }
+    // play/pause
+    document.getElementById('playBtn').addEventListener('click', ()=> {
+      if (!currentVideoId){ alert('Сначала загрузите видео.'); return; }
       const pos = playerReady && player.getCurrentTime ? player.getCurrentTime() : 0;
-      roomRef.child('state').set({ videoId: currentVideoId, playing: true, position: pos, ts: Date.now(), lastBy: clientId }).catch(console.error);
+      roomRef.child('state').set({ videoId:currentVideoId, playing:true, position:pos, ts:Date.now(), lastBy:clientId }).catch(()=>{});
       if (playerReady) player.playVideo();
     });
-    document.getElementById('btnPause').addEventListener('click', () => {
+    document.getElementById('miniChatBtn').addEventListener('click', ()=> toggleChat(true));
+    document.getElementById('rewBtn').addEventListener('click', ()=> seekBy(-10));
+    document.getElementById('fwdBtn').addEventListener('click', ()=> seekBy(10));
+    document.getElementById('btnPlayAll').addEventListener('click', ()=> { document.getElementById('playBtn').click(); });
+    document.getElementById('btnPauseAll').addEventListener('click', ()=> {
       if (!currentVideoId) return;
       const pos = playerReady && player.getCurrentTime ? player.getCurrentTime() : 0;
-      roomRef.child('state').set({ videoId: currentVideoId, playing: false, position: pos, ts: Date.now(), lastBy: clientId }).catch(console.error);
+      roomRef.child('state').set({ videoId:currentVideoId, playing:false, position:pos, ts:Date.now(), lastBy:clientId }).catch(()=>{});
       if (playerReady) player.pauseVideo();
     });
 
-    // Host "play all / pause all" (in host panel)
-    document.getElementById('btnPlayAll').addEventListener('click', () => {
-      if (!currentVideoId) { alert('Сначала загрузите видео.'); return; }
-      const pos = playerReady && player.getCurrentTime ? player.getCurrentTime() : 0;
-      roomRef.child('state').set({ videoId: currentVideoId, playing: true, position: pos, ts: Date.now(), lastBy: clientId }).catch(console.error);
-      if (playerReady) player.playVideo();
-    });
-    document.getElementById('btnPauseAll').addEventListener('click', () => {
-      if (!currentVideoId) return;
-      const pos = playerReady && player.getCurrentTime ? player.getCurrentTime() : 0;
-      roomRef.child('state').set({ videoId: currentVideoId, playing: false, position: pos, ts: Date.now(), lastBy: clientId }).catch(console.error);
-      if (playerReady) player.pauseVideo();
-    });
+    function seekBy(delta){
+      if (!playerReady) return;
+      const cur = player.getCurrentTime();
+      const next = Math.max(0, cur + delta);
+      player.seekTo(next, true);
+      showSeekToast((delta>0?'+':'') + delta + 's');
+      // if host, update state
+      if (isHost && currentVideoId){
+        roomRef.child('state').update({ position: next, ts:Date.now(), lastBy: clientId }).catch(()=>{});
+      }
+    }
 
-    // Host periodic sync
+    // seek toast
+    const seekToast = document.getElementById('seekToast');
+    let seekTimer = null;
+    function showSeekToast(text){
+      seekToast.textContent = text; seekToast.classList.add('show');
+      if (seekTimer) clearTimeout(seekTimer);
+      seekTimer = setTimeout(()=>{ seekToast.classList.remove('show'); }, 900);
+    }
+
+    // host periodic sync
     let hostSyncInterval = null;
     function startHostPositionSync(){
       if (!isHost) return;
       if (hostSyncInterval) clearInterval(hostSyncInterval);
-      hostSyncInterval = setInterval(() => {
+      hostSyncInterval = setInterval(()=> {
         if (!playerReady || !currentVideoId) return;
         const pos = player.getCurrentTime ? player.getCurrentTime() : 0;
         const playing = player.getPlayerState ? (player.getPlayerState() === YT.PlayerState.PLAYING) : false;
-        roomRef.child('state').update({ position: pos, playing: playing, ts: Date.now(), lastBy: clientId }).catch(console.error);
+        roomRef.child('state').update({ position: pos, playing: playing, ts: Date.now(), lastBy: clientId }).catch(()=>{});
       }, 3000);
     }
-    window.addEventListener('beforeunload', () => { if (hostSyncInterval) clearInterval(hostSyncInterval); });
+    window.addEventListener('beforeunload', ()=> { if (hostSyncInterval) clearInterval(hostSyncInterval); });
 
-    // Initial load of existing room state
-    roomRef.child('state').once('value').then((snap) => {
-      const s = snap.val();
-      if (!s || !s.videoId) return;
+    // initial load state
+    roomRef.child('state').once('value').then(snap => {
+      const s = snap.val(); if (!s || !s.videoId) return;
       currentVideoId = s.videoId;
       const start = s.position || 0;
-      if (playerReady) {
-        applyVideoLoad(currentVideoId, start);
-        setTimeout(()=>{ if (s.playing) applyPlay(start); else applyPause(start); }, 500);
+      if (playerReady) { applyVideoLoad(currentVideoId, start); setTimeout(()=>{ if (s.playing) applyPlay(s.position); else applyPause(s.position); }, 500); }
+      else pendingLoad = { videoId: currentVideoId, start };
+    }).catch(()=>{});
+
+    // ====== Mobile gestures: double tap & swipe up/down & single tap toggle controls ======
+    let lastTap = 0;
+    let tapTimeout = null;
+    const playerEl = document.getElementById('player');
+    const controlsOverlay = document.getElementById('controlsOverlay');
+
+    // single tap toggles controls
+    function toggleControls(show){
+      if (controlsOverlay.style.opacity === '0' || controlsOverlay.style.display === 'none') {
+        controlsOverlay.style.opacity = '1'; controlsOverlay.style.display = 'flex';
+        controlsOverlay.style.transform = 'translateY(0)';
       } else {
-        pendingLoad = { videoId: currentVideoId, start };
+        controlsOverlay.style.opacity = '0'; controlsOverlay.style.display = 'none';
       }
-    }).catch(console.error);
-
-    // initial system message
-    (function sayRoomOpened(){
-      const payload = { name: "Система", text: `Комната ${roomId} открыта`, time: Date.now(), by: 'system' };
-      roomRef.child('messages').push(payload).catch(()=>{/*ignore*/});
-    })();
-
-    // small UX: open chat on first load for viewers
-    if (!isHost) {
-      setTimeout(()=>{ chatDrawer.classList.add('open'); }, 250);
     }
+
+    // handle touch events for double tap and swipe
+    let touchStartY = null, touchStartX = null, touchMoved=false;
+    playerEl.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 1) return;
+      const t = e.touches[0];
+      touchStartY = t.clientY; touchStartX = t.clientX; touchMoved=false;
+      const current = Date.now();
+      const timeSince = current - lastTap;
+      if (timeSince < 300 && timeSince > 20) {
+        // double tap detected
+        lastTap = 0;
+        const w = window.innerWidth;
+        if (touchStartX < w/2) seekBy(-10); else seekBy(10);
+      } else {
+        lastTap = current;
+        // single tap fallback
+        if (tapTimeout) clearTimeout(tapTimeout);
+        tapTimeout = setTimeout(()=>{ toggleControls(); }, 350);
+      }
+    });
+
+    playerEl.addEventListener('touchmove', (e) => {
+      touchMoved = true;
+    });
+
+    playerEl.addEventListener('touchend', (e) => {
+      if (!touchMoved) return;
+      const t = e.changedTouches[0];
+      const dy = (t.clientY - touchStartY);
+      if (dy < -60) { // swipe up
+        toggleChat(true);
+      } else if (dy > 60) { // swipe down
+        toggleChat(false);
+      }
+    });
+
+    // ====== Chat open/close helpers ======
+    function toggleChat(open){
+      const el = document.getElementById('chatDrawer');
+      if (open) { el.classList.add('open'); el.setAttribute('aria-hidden','false'); }
+      else { el.classList.remove('open'); el.setAttribute('aria-hidden','true'); }
+    }
+    document.getElementById('chatToggle').addEventListener('click', ()=> toggleChat(true));
+    document.getElementById('closeChat').addEventListener('click', ()=> toggleChat(false));
+    document.getElementById('miniChatBtn').addEventListener('click', ()=> toggleChat(true));
+    document.getElementById('hostToggle').addEventListener('click', ()=> {
+      const p = document.getElementById('hostPanel');
+      if (!isHost) { alert('Только ведущий может открыть панель.'); return; }
+      p.classList.toggle('open'); p.setAttribute('aria-hidden', !p.classList.contains('open'));
+    });
+
+    // ====== Connection indicator ======
+    function updateConnectionDot(online){
+      const dot = document.getElementById('connectionDot');
+      if (online){ dot.style.background = '#22c55e'; document.getElementById('status').textContent='онлайн'; }
+      else { dot.style.background = '#bdbdbd'; document.getElementById('status').textContent='офлайн'; }
+    }
+    updateConnectionDot(false);
+
+    // ====== Double-role: clicking host button for non-host shows info ======
+    // (handled above)
+
+    // ====== PWA install prompt handling (Android Chrome) ======
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault(); deferredPrompt = e;
+      // Show simple prompt to user
+      const installBtn = document.createElement('button'); installBtn.className='btn primary'; installBtn.textContent='Установить';
+      installBtn.style.position='fixed'; installBtn.style.left='50%'; installBtn.style.transform='translateX(-50%)'; installBtn.style.bottom='18px'; installBtn.style.zIndex='120';
+      document.body.appendChild(installBtn);
+      installBtn.addEventListener('click', async () => {
+        installBtn.remove();
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      });
+    });
+
+    // iOS: show hint if not standalone
+    function isiOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+    if (isiOS() && !window.navigator.standalone) {
+      // show small banner once
+      setTimeout(()=>{ if (!localStorage.getItem('a2hs_shown')){ alert('Чтобы использовать как приложение: нажмите "Поделиться" → "Добавить на экран «Домой»".'); localStorage.setItem('a2hs_shown','1'); } }, 900);
+    }
+
+    // ====== Service worker registration (inline via Blob for single-file deploy) ======
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        const CACHE_NAME = 'yt-together-v1';
+        const urlsToCache = ['/', '/index.html'];
+        self.addEventListener('install', e=>{ self.skipWaiting(); e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(urlsToCache))); });
+        self.addEventListener('activate', e=>{ e.waitUntil(self.clients.claim()); });
+        self.addEventListener('fetch', e=>{ e.respondWith(caches.match(e.request).then(r=> r || fetch(e.request).catch(()=>caches.match('/index.html')))); });
+      `;
+      const blob = new Blob([swCode], {type:'application/javascript'});
+      const swUrl = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(swUrl).then(()=>console.log('sw registered')).catch(()=>console.warn('sw failed'));
+    }
+
+    // ====== Initial system message ======
+    (function sayOpen(){ roomRef.child('messages').push({ name:'Система', text:`Комната ${roomId} открыта`, time:Date.now(), by:'system' }).catch(()=>{}); })();
+
+    // ====== Initial room state load ======
+    roomRef.child('state').once('value').then(snap => {
+      const s = snap.val(); if (!s || !s.videoId) return;
+      currentVideoId = s.videoId; const start = s.position || 0;
+      if (playerReady) { applyVideoLoad(currentVideoId, start); setTimeout(()=>{ if (s.playing) applyPlay(start); else applyPause(start); }, 500); }
+      else pendingLoad = { videoId: currentVideoId, start };
+    }).catch(()=>{});
+
+    // ====== Small UX: open chat for viewers on first load ======
+    if (!isHost) setTimeout(()=> toggleChat(true), 450);
+
+    // ====== Setup connection dot using onDisconnect ping (simple) ======
+    const presenceRef = db.ref('presence/' + roomId + '/' + clientId);
+    presenceRef.set({ ts: Date.now(), by: clientId, host: isHost }).catch(()=>{});
+    presenceRef.onDisconnect().remove();
+    // monitor presence of any clients
+    db.ref('presence/' + roomId).on('value', snap => {
+      const val = snap.val(); const count = val ? Object.keys(val).length : 0;
+      document.getElementById('status').textContent = (count>0? 'онлайн':'пусто') + ' • ' + count;
+      updateConnectionDot(!!val);
+    });
+
+    // ====== Extra: double-tap already implemented above via touchstart; clicking overlay toggles controls ======
+    // Prevent screen from sleeping (Wake Lock API) when host is active (optional)
+    async function requestWakeLock(){
+      try {
+        if ('wakeLock' in navigator && isHost) {
+          const wl = await navigator.wakeLock.request('screen');
+          wl.addEventListener('release', ()=>console.log('wakeLock released'));
+        }
+      } catch(e){ console.warn('wake lock failed', e); }
+    }
+    requestWakeLock();
+
   </script>
 </body>
 </html>
