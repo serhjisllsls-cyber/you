@@ -49,7 +49,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const roomId = prompt("Введите ID комнаты (одинаковый для вас двоих):") || "room" + Math.floor(Math.random()*100000);
+        const roomId = prompt("Введите ID12 комнаты (одинаковый для вас двоих):") || "room" + Math.floor(Math.random()*100000);
         document.getElementById("room").textContent = roomId;
 
         const roomRef = db.ref('rooms/' + roomId);
