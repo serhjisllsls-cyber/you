@@ -12,14 +12,13 @@ import {
 
 // ========== ПЕРЕМЕННЫЕ ==========
 const ROOM_ID = "private_chat_room";
-const USERS = {
-    D: { password: "111" },
-    S: { password: "222" }
+const CREDENTIALS = {
+    "D": "111",
+    "S": "222"
 };
 
 let currentUser = null;
 let unsubscribe = null;
-let selectedNick = "D";
 
 // ========== DOM ЭЛЕМЕНТЫ ==========
 const loginScreen = document.getElementById('loginScreen');
@@ -31,62 +30,56 @@ const messagesContainer = document.getElementById('messagesContainer');
 const currentNickEl = document.getElementById('currentNick');
 const logoutBtn = document.getElementById('logoutBtn');
 const loginError = document.getElementById('loginError');
+const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
-const nickBtns = document.querySelectorAll('.nick-btn');
 
 // ========== СОБЫТИЯ ==========
-nickBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        nickBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        selectedNick = btn.dataset.nick;
-        passwordInput.value = '';
-        passwordInput.focus();
-    });
-});
-
 loginForm.addEventListener('submit', handleLogin);
 messageForm.addEventListener('submit', handleSendMessage);
 logoutBtn.addEventListener('click', handleLogout);
 
-// Предотвращение автозаполнения и зума
-document.addEventListener('touchmove', (e) => {
-    if (e.target === messageInput || e.target === passwordInput) {
-        return;
+// Только D или S в поле ника
+usernameInput.addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase();
+    if (e.target.value && !['D', 'S'].includes(e.target.value)) {
+        e.target.value = '';
     }
-}, { passive: true });
+});
 
 // ========== ВХОД ==========
 async function handleLogin(e) {
     e.preventDefault();
     
+    const username = usernameInput.value.trim().toUpperCase();
     const password = passwordInput.value;
 
     // Валидация
+    if (!username) {
+        showLoginError('Введите ник (D или S)');
+        return;
+    }
+
     if (!password) {
         showLoginError('Введите пароль');
         return;
     }
 
-    if (!USERS[selectedNick]) {
-        showLoginError('Неверный пользователь');
+    if (!['D', 'S'].includes(username)) {
+        showLoginError('Ник должен быть D или S');
         return;
     }
 
-    if (password !== USERS[selectedNick].password) {
+    if (CREDENTIALS[username] !== password) {
         showLoginError('Неверный пароль');
         return;
     }
 
     try {
-        currentUser = selectedNick;
+        currentUser = username;
 
         // Очистить форму
         loginForm.reset();
         loginError.textContent = '';
-        nickBtns.forEach(b => b.classList.remove('active'));
-        nickBtns[0].classList.add('active');
         
         // Переключить экран
         loginScreen.classList.remove('active');
@@ -98,7 +91,7 @@ async function handleLogin(e) {
         // Загрузить сообщения
         loadMessages();
         
-        // Фокус на input
+        // Фокус на input сообщения
         setTimeout(() => messageInput.focus(), 300);
 
     } catch (error) {
@@ -240,14 +233,12 @@ function handleLogout() {
     loginScreen.classList.add('active');
     
     messageInput.value = '';
+    usernameInput.value = '';
     passwordInput.value = '';
-    selectedNick = "D";
-    nickBtns.forEach(b => b.classList.remove('active'));
-    nickBtns[0].classList.add('active');
-    passwordInput.focus();
+    usernameInput.focus();
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 window.addEventListener('load', () => {
-    passwordInput.focus();
+    usernameInput.focus();
 });
