@@ -37,7 +37,7 @@ body {
     width: 100%;
     height: 100%;
     flex-direction: column;
-    background: #fff;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
 .screen.active {
@@ -57,10 +57,11 @@ body {
 }
 
 .login-container h1 {
-    font-size: 32px;
-    margin-bottom: 40px;
+    font-size: 36px;
+    margin-bottom: 50px;
     text-align: center;
-    color: #333;
+    color: #2c3e50;
+    font-weight: 700;
 }
 
 #loginForm {
@@ -68,49 +69,87 @@ body {
     max-width: 300px;
 }
 
+.button-group {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.nick-btn {
+    flex: 1;
+    padding: 14px;
+    border: 2px solid #bdc3c7;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    background: white;
+    color: #7f8c8d;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.nick-btn:active {
+    transform: scale(0.98);
+}
+
+.nick-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
 #loginForm input {
     width: 100%;
     padding: 14px 12px;
-    margin-bottom: 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 2px solid #bdc3c7;
+    border-radius: 10px;
     font-size: 16px;
-    background: #f9f9f9;
+    background: white;
+    color: #2c3e50;
     -webkit-appearance: none;
     appearance: none;
+    transition: all 0.3s ease;
 }
 
 #loginForm input:focus {
     outline: none;
-    border-color: #007AFF;
-    background: #fff;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-#loginForm button {
+.submit-btn {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, #007AFF, #0051D5);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    margin-top: 10px;
+    transition: all 0.3s ease;
     -webkit-appearance: none;
     appearance: none;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
-#loginForm button:active {
-    opacity: 0.8;
+.submit-btn:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
 .error-message {
-    color: #FF3B30;
+    color: #e74c3c;
     text-align: center;
     margin-top: 15px;
     font-size: 14px;
     min-height: 20px;
+    font-weight: 500;
 }
 
 /* ========== ЭКРАН ЧАТА ========== */
@@ -119,11 +158,11 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: linear-gradient(135deg, #007AFF, #0051D5);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    border-bottom: 1px solid #e0e0e0;
     padding-top: max(12px, env(safe-area-inset-top));
     flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .header-content {
@@ -133,34 +172,37 @@ body {
 }
 
 .header-content h2 {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 22px;
+    font-weight: 700;
 }
 
 .online-status {
-    font-size: 20px;
-    animation: blink 2s infinite;
+    font-size: 14px;
+    animation: pulse 2s infinite;
+    color: #2ecc71;
 }
 
-@keyframes blink {
-    0%, 49%, 100% { opacity: 1; }
-    50%, 99% { opacity: 0.4; }
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 .logout-btn {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.25);
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.5);
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
     font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
+    transition: all 0.3s ease;
     -webkit-appearance: none;
     appearance: none;
 }
 
 .logout-btn:active {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.35);
 }
 
 .messages-container {
@@ -169,15 +211,25 @@ body {
     -webkit-overflow-scrolling: touch;
     display: flex;
     flex-direction: column;
-    padding: 10px 0;
+    padding: 12px 0;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.empty-state {
+    text-align: center;
+    color: #7f8c8d;
+    padding: 40px 20px;
+    margin: auto;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 .message {
     display: flex;
     flex-direction: column;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     padding: 0 12px;
     animation: slideIn 0.3s ease-out;
 }
@@ -197,101 +249,113 @@ body {
     align-items: flex-end;
 }
 
-.message:not(.own) {
+.message.other {
     align-items: flex-start;
 }
 
 .message-user {
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
+    font-size: 13px;
+    font-weight: 700;
     margin-bottom: 4px;
     padding: 0 6px;
+    letter-spacing: 0.5px;
 }
 
 .message.own .message-user {
-    color: #0051D5;
+    color: #764ba2;
+}
+
+.message.other .message-user {
+    color: #667eea;
 }
 
 .message-bubble {
     max-width: 85%;
-    padding: 10px 14px;
-    border-radius: 16px;
+    padding: 12px 16px;
+    border-radius: 18px;
     word-wrap: break-word;
     font-size: 15px;
     line-height: 1.4;
     -webkit-user-select: text;
     user-select: text;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .message.own .message-bubble {
-    background: #007AFF;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border-bottom-right-radius: 4px;
 }
 
-.message:not(.own) .message-bubble {
-    background: #E5E5EA;
-    color: #333;
+.message.other .message-bubble {
+    background: white;
+    color: #2c3e50;
     border-bottom-left-radius: 4px;
+    border: 1px solid #ecf0f1;
 }
 
 .message-time {
     font-size: 12px;
-    color: #999;
+    color: #95a5a6;
     margin-top: 4px;
     padding: 0 6px;
+    font-weight: 500;
 }
 
 .message.own .message-time {
     text-align: right;
 }
 
-.message:not(.own) .message-time {
+.message.other .message-time {
     text-align: left;
 }
 
 .input-area {
     display: flex;
     padding: 12px 12px;
-    background: #f9f9f9;
-    border-top: 1px solid #e0e0e0;
+    background: white;
+    border-top: 1px solid #ecf0f1;
     flex-shrink: 0;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
     padding-left: max(12px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
 }
 
 #messageForm {
     display: flex;
     width: 100%;
-    gap: 8px;
+    gap: 10px;
 }
 
 #messageInput {
     flex: 1;
-    padding: 10px 14px;
-    border: 1px solid #ddd;
-    border-radius: 20px;
+    padding: 12px 16px;
+    border: 2px solid #ecf0f1;
+    border-radius: 24px;
     font-size: 16px;
     background: white;
+    color: #2c3e50;
     -webkit-appearance: none;
     appearance: none;
+    transition: all 0.3s ease;
 }
 
 #messageInput:focus {
     outline: none;
-    border-color: #007AFF;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .send-btn {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, #007AFF, #0051D5);
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
     border-radius: 50%;
-    font-size: 18px;
+    font-size: 20px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -299,10 +363,14 @@ body {
     flex-shrink: 0;
     -webkit-appearance: none;
     appearance: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    font-weight: 700;
 }
 
 .send-btn:active {
-    opacity: 0.8;
+    transform: scale(0.95);
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
 }
 
 /* Скролл для iOS */
@@ -315,7 +383,7 @@ body {
 }
 
 .messages-container::-webkit-scrollbar-thumb {
-    background: #ccc;
+    background: rgba(102, 126, 234, 0.3);
     border-radius: 3px;
 }
 
@@ -323,10 +391,13 @@ body {
 @media (max-width: 480px) {
     .message-bubble {
         max-width: 90%;
+        padding: 11px 14px;
+        font-size: 14px;
     }
     
     .login-container h1 {
-        font-size: 28px;
+        font-size: 32px;
+        margin-bottom: 40px;
     }
 }
 
