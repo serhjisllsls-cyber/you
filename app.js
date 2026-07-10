@@ -9,14 +9,15 @@ import {
     and,
     or,
     Timestamp,
-    getDocs
+    getDocs,
+    deleteDoc,
+    doc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ========== ПЕРЕМЕННЫЕ ==========
+const ROOM_ID = "private_chat_room"; // Одна комната для двоих
 let currentUser = null;
-let otherUser = null;
 let unsubscribe = null;
-let allUsers = [];
 
 // ========== DOM ЭЛЕМЕНТЫ ==========
 const loginScreen = document.getElementById('loginScreen');
@@ -39,7 +40,7 @@ logoutBtn.addEventListener('click', handleLogout);
 async function handleLogin(e) {
     e.preventDefault();
     
-    const username = usernameInput.value.trim().toLowerCase();
+    const username = usernameInput.value.trim();
 
     // Валидация
     if (!username) {
@@ -57,33 +58,9 @@ async function handleLogin(e) {
         return;
     }
 
-    if (!/^[a-zA-Z0-9_а-яё]+$/.test(username)) {
-        showLoginError('Ник может содержать только буквы, цифры и _');
-        return;
-    }
-
     try {
-        // Получить список всех активных пользователей
-        const usersRef = collection(db, 'users');
-        const snapshot = await getDocs(usersRef);
-        allUsers = snapshot.docs.map(d => d.data().username);
-
-        // Проверить есть ли другой пользователь
-        const otherUsers = allUsers.filter(u => u !== username);
-
-        if (otherUsers.length === 0) {
-            showLoginError('Ждем второго участника...');
-            return;
-        }
-
-        otherUser = otherUsers[0];
+        // Просто войти с этим ником
         currentUser = username;
-
-        // Добавить пользователя в БД
-        await addDoc(usersRef, {
-            username: currentUser,
-            timestamp: Timestamp.now()
-        });
 
         // Очистить форму
         loginForm.reset();
@@ -94,7 +71,7 @@ async function handleLogin(e) {
         chatScreen.classList.add('active');
         
         // Установить заголовок
-        chatTitle.textContent = otherUser;
+        chatTitle.textContent = 'Приватный чат';
         
         // Загрузить сообщения
         loadMessages();
@@ -119,19 +96,10 @@ function showLoginError(message) {
 
 // ========== ЗАГРУЗКА СООБЩЕНИЙ ==========
 function loadMessages() {
-    const messagesRef = collection(db, 'messages');
+    const messagesRef = collection(db, 'chat_messages');
     const q = query(
         messagesRef,
-        or(
-            and(
-                where('from', '==', currentUser),
-                where('to', '==', otherUser)
-            ),
-            and(
-                where('from', '==', otherUser),
-                where('to', '==', currentUser)
-            )
-        ),
+        where('room', '==', ROOM_ID),
         orderBy('timestamp', 'asc')
     );
 
@@ -172,6 +140,10 @@ function createMessageElement(data) {
     
     div.className = `message ${isOwn ? 'own' : ''}`;
     
+    const userLabel = document.createElement('div');
+    userLabel.className = 'message-user';
+    userLabel.textContent = data.from;
+    
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
     bubble.textContent = data.text;
@@ -180,6 +152,7 @@ function createMessageElement(data) {
     time.className = 'message-time';
     time.textContent = formatTime(data.timestamp);
     
+    div.appendChild(userLabel);
     div.appendChild(bubble);
     div.appendChild(time);
     
@@ -215,9 +188,9 @@ async function handleSendMessage(e) {
     try {
         messageInput.disabled = true;
         
-        await addDoc(collection(db, 'messages'), {
+        await addDoc(collection(db, 'chat_messages'), {
+            room: ROOM_ID,
             from: currentUser,
-            to: otherUser,
             text: text,
             timestamp: Timestamp.now()
         });
@@ -239,7 +212,6 @@ function handleLogout() {
     }
     
     currentUser = null;
-    otherUser = null;
     messagesContainer.innerHTML = '';
     
     chatScreen.classList.remove('active');
