@@ -16,15 +16,18 @@
             <div class="login-container">
                 <h1>💬 Чат</h1>
                 <form id="loginForm">
+                    <div class="button-group">
+                        <button type="button" class="nick-btn active" data-nick="D" data-pass="111">D</button>
+                        <button type="button" class="nick-btn" data-nick="S" data-pass="222">S</button>
+                    </div>
                     <input 
-                        type="text" 
-                        id="username" 
-                        placeholder="Введите ваш ник" 
+                        type="password" 
+                        id="password" 
+                        placeholder="Пароль" 
                         required
                         autocomplete="off"
-                        maxlength="20"
                     >
-                    <button type="submit">Войти</button>
+                    <button type="submit" class="submit-btn">Войти</button>
                 </form>
                 <div id="loginError" class="error-message"></div>
             </div>
@@ -34,8 +37,8 @@
         <div id="chatScreen" class="screen">
             <div class="chat-header">
                 <div class="header-content">
-                    <h2 id="chatTitle">Чат</h2>
-                    <span id="onlineStatus" class="online-status">•</span>
+                    <h2 id="currentNick">D</h2>
+                    <span id="onlineStatus" class="online-status">●</span>
                 </div>
                 <button id="logoutBtn" class="logout-btn">Выход</button>
             </div>
