@@ -7,30 +7,40 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { margin:0; padding:0; background:#0a0a0a; color:#fff; font-family:Arial; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
-        #header { padding:12px; background:#111; text-align:center; }
+        body { margin:0; padding:0; background:#0a0a0a; color:#fff; font-family:Arial,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+        #header { padding:12px; background:#111; text-align:center; font-size:17px; }
         #player { flex:1; background:#000; }
         iframe { width:100%; height:100%; border:none; }
-        #chat { height:250px; overflow-y:auto; padding:12px; background:#111; }
-        .message { margin:8px 0; padding:10px 14px; border-radius:12px; max-width:85%; }
-        .me { background:#3f51b5; margin-left:auto; }
-        .other { background:#1f1f1f; }
-        #controls { padding:12px; background:#111; }
-        input, button { padding:12px; margin:5px 0; border-radius:8px; width:100%; font-size:16px; }
-        button { background:#ff0000; color:white; font-weight:bold; }
+        #chat { height:280px; overflow-y:auto; padding:12px; background:#111; display:flex; flex-direction:column; gap:8px; }
+        .message { max-width:85%; padding:11px 14px; border-radius:14px; font-size:15.5px; }
+        .me { align-self: flex-end; background: #3f51b5; border-bottom-right-radius: 6px; }
+        .other { align-self: flex-start; background: #1f1f1f; border-bottom-left-radius: 6px; }
+        #controls { padding: 14px 16px; background: #111; border-top: 1px solid #333; }
+        input { background: #222; border: none; color: white; padding: 13px; border-radius: 10px; font-size: 16px; }
+        button { background: #ff0000; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 600; font-size: 16px; margin: 4px 0; }
+        .host-only { background: #1a1a1a; padding: 10px; border-radius: 10px; margin: 8px 0; }
     </style>
 </head>
 <body>
-    <div id="header">YouTube Вместе — Комната: <b id="room"></b></div>
+    <div id="header">YouTube Вместе — Комната: <b id="room"></b> <span id="role" style="font-size:14px;"></span></div>
     <div id="player"><iframe id="youtube" allowfullscreen allow="autoplay"></iframe></div>
     <div id="chat"></div>
     <div id="controls">
-        <input type="text" id="url" placeholder="Вставьте ссылку YouTube">
-        <button onclick="loadVideo()">▶ Запустить видео у всех</button>
+        <!-- Видно только ведущему -->
+        <div id="hostControls" class="host-only">
+            <input type="text" id="url" placeholder="Вставьте ссылку YouTube">
+            <button onclick="loadVideo()">Загрузить видео</button>
+            <div style="display:flex; gap:8px;">
+                <button onclick="playAll()" style="flex:1; background:#4caf50;">▶ Запустить у всех</button>
+                <button onclick="pauseAll()" style="flex:1; background:#f44336;">⏸ Остановить у всех</button>
+            </div>
+        </div>
+
+        <!-- Чат для всех -->
         <div style="display:flex; gap:8px;">
-            <input type="text" id="name" value="Я" style="width:120px; margin:0;">
-            <input type="text" id="msg" placeholder="Сообщение" style="flex:1; margin:0;" onkeypress="if(event.key==='Enter') sendMsg()">
-            <button onclick="sendMsg()" style="width:auto;">→</button>
+            <input type="text" id="name" value="Я" style="width:120px;">
+            <input type="text" id="msg" placeholder="Сообщение..." style="flex:1;" onkeypress="if(event.key==='Enter') sendMsg()">
+            <button onclick="sendMsg()" style="width:auto; padding:0 20px;">→</button>
         </div>
     </div>
 
@@ -47,8 +57,16 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const roomId = prompt("ID комнаты:") || "room" + Math.floor(Math.random()*100000);
+        const roomId = prompt("Введите ID комнаты:") || "room" + Math.floor(Math.random()*100000);
         document.getElementById("room").textContent = roomId;
+
+        const isHost = confirm("Вы ведущий? (будете управлять видео)");
+        document.getElementById("role").textContent = isHost ? "(Ведущий)" : "(Зритель)";
+
+        // Скрываем панель управления у зрителя
+        if (!isHost) {
+            document.getElementById("hostControls").style.display = "none";
+        }
 
         const roomRef = db.ref('rooms/' + roomId);
 
@@ -56,17 +74,20 @@
             const url = document.getElementById("url").value.trim();
             const videoId = url.match(/(?:v=|youtu\.be\/)([^&?]+)/)?.[1];
             if (videoId) {
-                roomRef.update({ 
-                    videoId: videoId,
-                    action: 'play',
-                    time: Date.now()
-                });
-                addMessage("Система", "Видео запущено у всех", false);
+                roomRef.update({ videoId: videoId });
             }
         }
 
+        function playAll() {
+            roomRef.update({ command: 'play' });
+        }
+
+        function pauseAll() {
+            roomRef.update({ command: 'pause' });
+        }
+
         function sendMsg() {
-            const name = document.getElementById("name").value || "Я";
+            const name = document.getElementById("name").value.trim() || "Пользователь";
             const text = document.getElementById("msg").value.trim();
             if (text) {
                 roomRef.child('messages').push({ name, text, time: Date.now() });
@@ -74,20 +95,18 @@
             }
         }
 
-        // Основной слушатель
+        // Синхронизация видео
         roomRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && data.videoId) {
                 const iframe = document.getElementById("youtube");
-                const currentSrc = iframe.src;
-                const newSrc = `https://www.youtube.com/embed/${data.videoId}?autoplay=1&rel=0&playsinline=1`;
-                if (!currentSrc.includes(data.videoId)) {
-                    iframe.src = newSrc;
+                if (!iframe.src.includes(data.videoId)) {
+                    iframe.src = `https://www.youtube.com/embed/${data.videoId}?autoplay=1&rel=0&playsinline=1`;
                 }
             }
         });
 
-        // Слушатель сообщений
+        // Сообщения
         roomRef.child('messages').on('child_added', (snapshot) => {
             const msg = snapshot.val();
             const chat = document.getElementById("chat");
@@ -97,15 +116,6 @@
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
         });
-
-        function addMessage(name, text, isMe) {
-            const chat = document.getElementById("chat");
-            const div = document.createElement("div");
-            div.className = `message ${isMe ? 'me' : 'other'}`;
-            div.innerHTML = `<strong>${name}:</strong> ${text}`;
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
-        }
 
         addMessage("Система", `Комната ${roomId} открыта`, false);
     </script>
