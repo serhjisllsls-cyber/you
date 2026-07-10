@@ -1,4 +1,4 @@
-import { db, auth } from './firebase-config.js';
+import { db } from './firebase-config.js';
 import {
     collection,
     addDoc,
@@ -9,17 +9,14 @@ import {
     and,
     or,
     Timestamp,
-    getDocs,
-    deleteDoc
+    getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ========== ПЕРЕМЕННЫЕ ==========
-const ALLOWED_USERS = ['user1', 'user2']; // Пользователи чата
-const CHAT_PASSWORD = 'password123'; // Пароль для входа
-
 let currentUser = null;
 let otherUser = null;
 let unsubscribe = null;
+let allUsers = [];
 
 // ========== DOM ЭЛЕМЕНТЫ ==========
 const loginScreen = document.getElementById('loginScreen');
@@ -31,76 +28,97 @@ const messagesContainer = document.getElementById('messagesContainer');
 const chatTitle = document.getElementById('chatTitle');
 const logoutBtn = document.getElementById('logoutBtn');
 const loginError = document.getElementById('loginError');
+const usernameInput = document.getElementById('username');
 
 // ========== СОБЫТИЯ ==========
 loginForm.addEventListener('submit', handleLogin);
 messageForm.addEventListener('submit', handleSendMessage);
 logoutBtn.addEventListener('click', handleLogout);
 
-// Предотвращение автозаполнения
-document.querySelectorAll('input').forEach(input => {
-    input.addEventListener('blur', () => {
-        if (input.value) {
-            input.type = input.id === 'password' ? 'password' : 'text';
-        }
-    });
-});
-
 // ========== ВХОД ==========
 async function handleLogin(e) {
     e.preventDefault();
     
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
+    const username = usernameInput.value.trim().toLowerCase();
 
     // Валидация
-    if (!username || !password) {
-        showLoginError('Заполните оба поля');
+    if (!username) {
+        showLoginError('Введите ник');
         return;
     }
 
-    if (!ALLOWED_USERS.includes(username)) {
-        showLoginError('Неверные учетные данные');
+    if (username.length < 2) {
+        showLoginError('Ник должен быть минимум 2 символа');
         return;
     }
 
-    if (password !== CHAT_PASSWORD) {
-        showLoginError('Неверный пароль');
+    if (username.length > 20) {
+        showLoginError('Ник не может быть более 20 символов');
         return;
     }
 
-    // Успешный вход
-    currentUser = username;
-    otherUser = ALLOWED_USERS.find(u => u !== currentUser);
-    
-    // Очистить форму
-    loginForm.reset();
-    loginError.textContent = '';
-    
-    // Переключить экран
-    loginScreen.classList.remove('active');
-    chatScreen.classList.add('active');
-    
-    // Установить заголовок
-    chatTitle.textContent = `Чат с ${otherUser}`;
-    
-    // Загрузить сообщения
-    loadMessages();
-    
-    // Фокус на input
-    setTimeout(() => messageInput.focus(), 300);
+    if (!/^[a-zA-Z0-9_а-яё]+$/.test(username)) {
+        showLoginError('Ник может содержать только буквы, цифры и _');
+        return;
+    }
+
+    try {
+        // Получить список всех активных пользователей
+        const usersRef = collection(db, 'users');
+        const snapshot = await getDocs(usersRef);
+        allUsers = snapshot.docs.map(d => d.data().username);
+
+        // Проверить есть ли другой пользователь
+        const otherUsers = allUsers.filter(u => u !== username);
+
+        if (otherUsers.length === 0) {
+            showLoginError('Ждем второго участника...');
+            return;
+        }
+
+        otherUser = otherUsers[0];
+        currentUser = username;
+
+        // Добавить пользователя в БД
+        await addDoc(usersRef, {
+            username: currentUser,
+            timestamp: Timestamp.now()
+        });
+
+        // Очистить форму
+        loginForm.reset();
+        loginError.textContent = '';
+        
+        // Переключить экран
+        loginScreen.classList.remove('active');
+        chatScreen.classList.add('active');
+        
+        // Установить заголовок
+        chatTitle.textContent = otherUser;
+        
+        // Загрузить сообщения
+        loadMessages();
+        
+        // Фокус на input
+        setTimeout(() => messageInput.focus(), 300);
+
+    } catch (error) {
+        console.error('Ошибка входа:', error);
+        showLoginError('Ошибка подключения');
+    }
 }
 
 function showLoginError(message) {
     loginError.textContent = message;
     setTimeout(() => {
-        loginError.textContent = '';
+        if (currentUser === null) {
+            loginError.textContent = '';
+        }
     }, 3000);
 }
 
 // ========== ЗАГРУЗКА СООБЩЕНИЙ ==========
 function loadMessages() {
-    // Создать запрос для получения сообщений между двумя пользователями
     const messagesRef = collection(db, 'messages');
     const q = query(
         messagesRef,
@@ -117,7 +135,6 @@ function loadMessages() {
         orderBy('timestamp', 'asc')
     );
 
-    // Подписаться на реальные обновления
     unsubscribe = onSnapshot(q, (snapshot) => {
         displayMessages(snapshot.docs);
         
@@ -136,7 +153,7 @@ function displayMessages(docs) {
     if (docs.length === 0) {
         const emptyMessage = document.createElement('div');
         emptyMessage.className = 'empty-state';
-        emptyMessage.textContent = 'Нет сообщений. Начните диалог!';
+        emptyMessage.textContent = 'Начните диалог!';
         emptyMessage.style.cssText = 'text-align: center; color: #999; padding: 20px; margin: auto;';
         messagesContainer.appendChild(emptyMessage);
         return;
@@ -173,7 +190,7 @@ function formatTime(timestamp) {
     if (!timestamp) return '';
     
     let date;
-    if (timestamp instanceof Timestamp) {
+    if (timestamp.toDate) {
         date = timestamp.toDate();
     } else if (typeof timestamp === 'number') {
         date = new Date(timestamp);
@@ -229,12 +246,11 @@ function handleLogout() {
     loginScreen.classList.add('active');
     
     messageInput.value = '';
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
-    document.getElementById('username').focus();
+    usernameInput.value = '';
+    usernameInput.focus();
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 window.addEventListener('load', () => {
-    document.getElementById('username').focus();
+    usernameInput.focus();
 });
