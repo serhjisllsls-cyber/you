@@ -2,35 +2,65 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#260d2b">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1c0d26">
   <title>♥</title>
 
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <div id="hearts" aria-hidden="true"></div>
+  <canvas id="heartCanvas" aria-hidden="true"></canvas>
 
   <main>
     <section class="card" aria-label="Количество дней вместе">
-      <div class="days-number" id="days">0</div>
+      <div class="days-number" id="days" aria-live="polite">0</div>
     </section>
   </main>
 
   <script>
     /*
-      ПОМЕНЯЙ ТОЛЬКО ЭТУ ДАТУ:
+      ВАША ДАТА НАЧАЛА ОТНОШЕНИЙ
       формат: ГОД-МЕСЯЦ-ДЕНЬ
     */
     const START_DATE = "2024-06-15";
 
-    const heartsLayer = document.getElementById("hearts");
-    const symbols = ["♥", "♥", "♥", "♡", "✦"];
+    const counter = document.getElementById("days");
+    const canvas = document.getElementById("heartCanvas");
+    const context = canvas.getContext("2d", { alpha: true });
+
+    let width = 0;
+    let height = 0;
+    let pixelRatio = 1;
+    let particles = [];
+    let animationFrame;
+    let lastFrame = 0;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     function getStartDate() {
       const [year, month, day] = START_DATE.split("-").map(Number);
       return new Date(year, month - 1, day);
+    }
+
+    function animateCounter(targetNumber) {
+      const duration = 1500;
+      const startTime = performance.now();
+
+      function animate(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const smoothProgress = 1 - Math.pow(1 - progress, 4);
+
+        counter.textContent = Math.floor(targetNumber * smoothProgress);
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          counter.textContent = targetNumber;
+        }
+      }
+
+      requestAnimationFrame(animate);
     }
 
     function updateCounter() {
@@ -40,62 +70,137 @@
       startDate.setHours(0, 0, 0, 0);
       today.setHours(0, 0, 0, 0);
 
-      const millisecondsInDay = 1000 * 60 * 60 * 24;
+      const oneDay = 1000 * 60 * 60 * 24;
       const daysTogether = Math.max(
         0,
-        Math.floor((today - startDate) / millisecondsInDay)
+        Math.floor((today - startDate) / oneDay)
       );
 
-      document.getElementById("days").textContent = daysTogether;
+      animateCounter(daysTogether);
     }
 
-    function createHeart(x = Math.random() * 104 - 2, delay = -Math.random() * 15) {
-      const heart = document.createElement("span");
-      heart.className = "heart";
-      heart.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-
-      heart.style.setProperty("--x", x + "vw");
-      heart.style.setProperty("--size", (7 + Math.random() * 18) + "px");
-      heart.style.setProperty("--speed", (7 + Math.random() * 9) + "s");
-      heart.style.setProperty("--delay", delay + "s");
-      heart.style.setProperty("--hue", 325 + Math.random() * 42);
-      heart.style.setProperty("--opacity", .32 + Math.random() * .62);
-      heart.style.setProperty("--drift", ((Math.random() - .5) * 160) + "px");
-      heart.style.setProperty("--rotate", ((Math.random() - .5) * 720) + "deg");
-
-      heartsLayer.appendChild(heart);
-      return heart;
+    function createParticle(randomPosition = true) {
+      return {
+        x: Math.random() * width,
+        y: randomPosition ? Math.random() * height : height + 20,
+        size: 2.8 + Math.random() * 4.2,
+        speed: 0.18 + Math.random() * 0.32,
+        sway: Math.random() * Math.PI * 2,
+        swaySpeed: 0.002 + Math.random() * 0.004,
+        rotation: (Math.random() - 0.5) * 0.8,
+        rotationSpeed: (Math.random() - 0.5) * 0.008,
+        opacity: 0.22 + Math.random() * 0.52,
+        hue: 330 + Math.random() * 28
+      };
     }
 
-    for (let i = 0; i < 190; i++) {
-      createHeart();
+    function drawHeart(x, y, size, rotation, hue, opacity) {
+      context.save();
+
+      context.translate(x, y);
+      context.rotate(rotation);
+      context.scale(size / 10, size / 10);
+
+      context.beginPath();
+      context.moveTo(0, 8);
+      context.bezierCurveTo(-14, -2, -7, -12, 0, -5);
+      context.bezierCurveTo(7, -12, 14, -2, 0, 8);
+
+      context.fillStyle = `hsla(${hue}, 100%, 76%, ${opacity})`;
+      context.fill();
+
+      context.restore();
     }
 
-    for (let i = 0; i < 32; i++) {
-      const sparkle = document.createElement("i");
-      sparkle.className = "sparkle";
-      sparkle.style.left = Math.random() * 100 + "%";
-      sparkle.style.top = Math.random() * 100 + "%";
-      sparkle.style.opacity = .2 + Math.random() * .6;
-      sparkle.style.animationDelay = -Math.random() * 2 + "s";
-      heartsLayer.appendChild(sparkle);
+    function resizeCanvas() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+
+      // Ограничение плотности пикселей экономит батарею телефона
+      pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+
+      canvas.width = Math.round(width * pixelRatio);
+      canvas.height = Math.round(height * pixelRatio);
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
+
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+      // Количество сердечек подстраивается под экран
+      const heartCount = Math.min(105, Math.max(55, Math.round(width / 4)));
+      particles = Array.from({ length: heartCount }, () => createParticle());
     }
 
-    document.addEventListener("pointerdown", (event) => {
-      const x = event.clientX / window.innerWidth * 100;
+    function drawFrame(time) {
+      const delta = Math.min((time - lastFrame) / 16.67 || 1, 2);
+      lastFrame = time;
 
-      for (let i = 0; i < 16; i++) {
-        const heart = createHeart(x, 0);
+      context.clearRect(0, 0, width, height);
 
-        heart.style.bottom = (window.innerHeight - event.clientY) + "px";
-        heart.style.setProperty("--speed", (1.2 + Math.random() * 1.5) + "s");
-        heart.style.setProperty("--drift", ((Math.random() - .5) * 250) + "px");
+      for (const particle of particles) {
+        particle.y -= particle.speed * delta;
+        particle.x += Math.sin(time * particle.swaySpeed + particle.sway) * 0.28;
+        particle.rotation += particle.rotationSpeed * delta;
 
-        setTimeout(() => heart.remove(), 3000);
+        if (particle.y < -20) {
+          Object.assign(particle, createParticle(false));
+        }
+
+        drawHeart(
+          particle.x,
+          particle.y,
+          particle.size,
+          particle.rotation,
+          particle.hue,
+          particle.opacity
+        );
+      }
+
+      animationFrame = requestAnimationFrame(drawFrame);
+    }
+
+    function startAnimation() {
+      cancelAnimationFrame(animationFrame);
+      lastFrame = performance.now();
+
+      if (reduceMotion.matches) {
+        context.clearRect(0, 0, width, height);
+
+        for (const particle of particles) {
+          drawHeart(
+            particle.x,
+            particle.y,
+            particle.size,
+            particle.rotation,
+            particle.hue,
+            particle.opacity
+          );
+        }
+
+        return;
+      }
+
+      animationFrame = requestAnimationFrame(drawFrame);
+    }
+
+    window.addEventListener("resize", () => {
+      resizeCanvas();
+      startAnimation();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        cancelAnimationFrame(animationFrame);
+      } else {
+        startAnimation();
       }
     });
 
+    reduceMotion.addEventListener("change", startAnimation);
+
+    resizeCanvas();
     updateCounter();
+    startAnimation();
   </script>
 </body>
 </html>
