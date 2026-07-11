@@ -2,220 +2,100 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Для тебя ♥</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#260d2b">
+  <title>♥</title>
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Marck+Script&display=swap');
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      overflow: hidden;
-      color: white;
-      font-family: "Comfortaa", sans-serif;
-      background:
-        radial-gradient(circle at 20% 15%, #d94d9c99, transparent 28rem),
-        radial-gradient(circle at 85% 80%, #8366e899, transparent 28rem),
-        linear-gradient(145deg, #1b0a29, #3d133f, #1c103b);
-    }
-
-    #hearts {
-      position: fixed;
-      inset: 0;
-      overflow: hidden;
-      pointer-events: none;
-    }
-
-    main {
-      min-height: 100svh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      position: relative;
-      z-index: 2;
-    }
-
-    .card {
-      width: min(100%, 390px);
-      min-height: 510px;
-      padding: 38px 24px 28px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      border-radius: 34px;
-      border: 1px solid #ffffff44;
-      background: #ffffff18;
-      box-shadow: 0 25px 60px #09000d88, inset 0 1px #ffffff33;
-      backdrop-filter: blur(18px);
-      animation: show .8s ease both;
-    }
-
-    .small-title {
-      margin: 0 0 18px;
-      color: #ffd5e8;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-    }
-
-    .big-heart {
-      width: 100px;
-      height: 100px;
-      display: grid;
-      place-items: center;
-      margin-bottom: 20px;
-      border-radius: 50%;
-      font-size: 55px;
-      background: radial-gradient(circle at 30% 25%, #ffb0d1, #ff4d96 65%, #e92a77);
-      box-shadow: 0 13px 30px #ff298866;
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    h1 {
-      margin: 0;
-      font: 400 clamp(48px, 13vw, 62px)/.95 "Marck Script", cursive;
-      text-shadow: 0 4px 18px #ffafd344;
-    }
-
-    p.message {
-      max-width: 280px;
-      margin: 22px 0 28px;
-      color: #fff4fbdf;
-      font-size: 14px;
-      line-height: 1.75;
-    }
-
-    strong { color: #ffd0e3; }
-
-    button {
-      border: 0;
-      border-radius: 999px;
-      padding: 15px 22px;
-      color: white;
-      font: 700 13px "Comfortaa", sans-serif;
-      cursor: pointer;
-      background: linear-gradient(110deg, #ff66a4, #f73281);
-      box-shadow: 0 12px 22px #ff247755;
-      transition: transform .2s;
-    }
-
-    button:active { transform: scale(.94); }
-
-    .hint {
-      margin: auto 0 0;
-      padding-top: 26px;
-      color: #ffffff8c;
-      font-size: 10px;
-    }
-
-    .heart {
-      position: absolute;
-      bottom: -10vh;
-      left: var(--x);
-      color: hsl(var(--hue), 100%, 76%);
-      font-size: var(--size);
-      opacity: 0;
-      filter: drop-shadow(0 3px 6px #ff65ad55);
-      animation: fly var(--speed) linear var(--delay) infinite;
-    }
-
-    @keyframes fly {
-      0%   { transform: translate(0, 0) rotate(0deg) scale(.6); opacity: 0; }
-      8%   { opacity: var(--opacity); }
-      82%  { opacity: var(--opacity); }
-      100% { transform: translate(var(--drift), -125vh) rotate(var(--rotate)); opacity: 0; }
-    }
-
-    @keyframes pulse {
-      50% { transform: scale(1.08) rotate(-4deg); }
-    }
-
-    @keyframes show {
-      from { opacity: 0; transform: translateY(18px) scale(.97); }
-      to { opacity: 1; transform: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <div id="hearts"></div>
+  <div id="hearts" aria-hidden="true"></div>
 
   <main>
-    <section class="card">
-      <p class="small-title">сообщение от сердца</p>
-      <div class="big-heart">♥</div>
-
-      <h1>Для тебя</h1>
-
-      <p class="message">
-        Пусть сегодня вокруг тебя<br>
-        случается чуть больше <strong>нежности</strong>,<br>
-        тепла и маленьких чудес.
-      </p>
-
-      <button id="loveButton">Отправить любовь ♥</button>
-      <p class="hint">нажми на экран — сердечки полетят</p>
+    <section class="card" aria-label="Количество дней вместе">
+      <div class="days-number" id="days">0</div>
     </section>
   </main>
 
   <script>
-    const hearts = document.getElementById("hearts");
-    const symbols = ["♥", "♥", "♡", "♥", "✦"];
+    /*
+      ПОМЕНЯЙ ТОЛЬКО ЭТУ ДАТУ:
+      формат: ГОД-МЕСЯЦ-ДЕНЬ
+    */
+    const START_DATE = "2024-06-15";
 
-    function heart(x = Math.random() * 100, delay = -Math.random() * 14) {
-      const el = document.createElement("span");
-      el.className = "heart";
-      el.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    const heartsLayer = document.getElementById("hearts");
+    const symbols = ["♥", "♥", "♥", "♡", "✦"];
 
-      el.style.setProperty("--x", x + "vw");
-      el.style.setProperty("--size", (7 + Math.random() * 18) + "px");
-      el.style.setProperty("--speed", (7 + Math.random() * 8) + "s");
-      el.style.setProperty("--delay", delay + "s");
-      el.style.setProperty("--hue", 325 + Math.random() * 42);
-      el.style.setProperty("--opacity", .35 + Math.random() * .6);
-      el.style.setProperty("--drift", ((Math.random() - .5) * 150) + "px");
-      el.style.setProperty("--rotate", ((Math.random() - .5) * 600) + "deg");
-
-      hearts.appendChild(el);
-      return el;
+    function getStartDate() {
+      const [year, month, day] = START_DATE.split("-").map(Number);
+      return new Date(year, month - 1, day);
     }
 
-    // Сотни летящих сердечек
-    for (let i = 0; i < 145; i++) heart();
+    function updateCounter() {
+      const startDate = getStartDate();
+      const today = new Date();
 
-    function burst(clientX, clientY, count = 28) {
-      const x = clientX / innerWidth * 100;
+      startDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
 
-      for (let i = 0; i < count; i++) {
-        const h = heart(x, 0);
-        h.style.bottom = (innerHeight - clientY) + "px";
-        h.style.setProperty("--speed", (1.3 + Math.random() * 1.5) + "s");
-        h.style.setProperty("--drift", ((Math.random() - .5) * 260) + "px");
+      const millisecondsInDay = 1000 * 60 * 60 * 24;
+      const daysTogether = Math.max(
+        0,
+        Math.floor((today - startDate) / millisecondsInDay)
+      );
 
-        setTimeout(() => h.remove(), 3000);
-      }
+      document.getElementById("days").textContent = daysTogether;
     }
 
-    document.addEventListener("pointerdown", event => {
-      if (!event.target.closest("button")) {
-        burst(event.clientX, event.clientY, 13);
+    function createHeart(x = Math.random() * 104 - 2, delay = -Math.random() * 15) {
+      const heart = document.createElement("span");
+      heart.className = "heart";
+      heart.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+
+      heart.style.setProperty("--x", x + "vw");
+      heart.style.setProperty("--size", (7 + Math.random() * 18) + "px");
+      heart.style.setProperty("--speed", (7 + Math.random() * 9) + "s");
+      heart.style.setProperty("--delay", delay + "s");
+      heart.style.setProperty("--hue", 325 + Math.random() * 42);
+      heart.style.setProperty("--opacity", .32 + Math.random() * .62);
+      heart.style.setProperty("--drift", ((Math.random() - .5) * 160) + "px");
+      heart.style.setProperty("--rotate", ((Math.random() - .5) * 720) + "deg");
+
+      heartsLayer.appendChild(heart);
+      return heart;
+    }
+
+    for (let i = 0; i < 190; i++) {
+      createHeart();
+    }
+
+    for (let i = 0; i < 32; i++) {
+      const sparkle = document.createElement("i");
+      sparkle.className = "sparkle";
+      sparkle.style.left = Math.random() * 100 + "%";
+      sparkle.style.top = Math.random() * 100 + "%";
+      sparkle.style.opacity = .2 + Math.random() * .6;
+      sparkle.style.animationDelay = -Math.random() * 2 + "s";
+      heartsLayer.appendChild(sparkle);
+    }
+
+    document.addEventListener("pointerdown", (event) => {
+      const x = event.clientX / window.innerWidth * 100;
+
+      for (let i = 0; i < 16; i++) {
+        const heart = createHeart(x, 0);
+
+        heart.style.bottom = (window.innerHeight - event.clientY) + "px";
+        heart.style.setProperty("--speed", (1.2 + Math.random() * 1.5) + "s");
+        heart.style.setProperty("--drift", ((Math.random() - .5) * 250) + "px");
+
+        setTimeout(() => heart.remove(), 3000);
       }
     });
 
-    document.getElementById("loveButton").addEventListener("click", event => {
-      const box = event.currentTarget.getBoundingClientRect();
-      burst(box.left + box.width / 2, box.top + box.height / 2, 50);
-
-      event.currentTarget.textContent = "Любовь уже летит ♥";
-      setTimeout(() => {
-        event.currentTarget.textContent = "Отправить любовь ♥";
-      }, 1800);
-    });
+    updateCounter();
   </script>
 </body>
 </html>
